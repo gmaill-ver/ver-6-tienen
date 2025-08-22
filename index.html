@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生の次章 - Life's Next Chapter</title>
+    <style>
+        :root {
+            --primary: #2c5282;
+            --secondary: #38a169;
+            --accent: #ed8936;
+            --warm: #d69e2e;
+            --light: #f7fafc;
+            --gray: #718096;
+            --dark: #2d3748;
+            --success: #48bb78;
+            --info: #4299e1;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ローディング画面 */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-icon {
+            font-size: 60px;
+            animation: pulse 2s infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        /* メインコンテナ */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: none;
+        }
+
+        /* ヘッダー */
+        .header {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px 30px;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.5s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            font-size: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text h1 {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 3px;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .weather-widget {
+            padding: 10px 15px;
+            background: var(--light);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .user-profile:hover {
+            transform: scale(1.05);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        /* ナビゲーションタブ */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 12px 25px;
+            background: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        /* コンテンツエリア */
+        .content-area {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .content-area.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ダッシュボードグリッド */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .card-title h3 {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+
+        .card-title p {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        /* 今日のおすすめ */
+        .recommendation-card {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .recommendation-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .recommend-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .recommend-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .recommend-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        /* スキルシェア */
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .skill-item {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .skill-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .skill-item.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .skill-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .skill-name {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* 地域活動マップ */
+        .map-container {
+            background: var(--light);
+            border-radius: 10px;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .activity-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .activity-item:hover {
+            transform: translateX(5px);
+            border-left-color: var(--secondary);
+        }
+
+        .activity-date {
+            min-width: 60px;
+            text-align: center;
+            padding: 10px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .activity-date-day {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .activity-date-month {
+            font-size: 11px;
+            color: var(--gray);
+        }
+
+        /* 健康チャレンジ */
+        .health-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .health-stat {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .health-stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .health-stat-label {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 5px;
+        }
+
+        .health-progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            height: 30px;
+            background: var(--light);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), var(--success));
+            border-radius: 15px;
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* メンターシップ */
+        .mentor-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .mentor-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mentor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .mentor-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        .mentor-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .mentor-expertise {
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 10px;
+        }
+
+        .mentor-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .mentor-tag {
+            background: var(--light);
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+        }
+
+        /* コミュニティフォーラム */
+        .forum-container {
+            background: white;
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .forum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .forum-categories {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .category-btn {
+            padding: 8px 15px;
+            background: var(--light);
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .category-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .forum-posts {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .forum-post {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .forum-post:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .post-author {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .author-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .post-meta {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .post-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .post-content {
+            font-size: 14px;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .post-action {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--gray);
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .post-action:hover {
+            color: var(--primary);
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius);
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: var(--light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* フォーム要素 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* ボタン */
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* フローティングアクションボタン */
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--warm));
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        /* 通知バッジ */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .recommendation-card {
+                grid-column: span 1;
+            }
+            
+            .health-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .nav-tabs {
+                justify-content: center;
+            }
+        }
+
+        /* アニメーション */
+        .bounce {
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .spin {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* ツールチップ */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            background: var(--dark);
+            color: white;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* スクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- ローディング画面 -->
+    <div id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-icon">🌱</div>
+            <h2>人生の次章へようこそ</h2>
+            <p>新しい冒険の準備中...</p>
+        </div>
+    </div>
+
+    <!-- メインコンテナ -->
+    <div class="main-container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🌱</div>
+                <div class="logo-text">
+                    <h1>人生の次章</h1>
+                    <p>Life's Next Chapter - 新たな挑戦と出会いの場</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <div class="weather-widget">
+                    <span id="weather">☀️ 晴れ 22°C</span>
+                </div>
+                <div class="user-profile" onclick="showProfile()">
+                    <div class="user-avatar">👤</div>
+                    <div>
+                        <div style="font-size: 14px; font-weight: bold;">山田太郎さん</div>
+                        <div style="font-size: 11px;">レベル 12</div>
+                    </div>
+                    <span class="notification-badge">3</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ナビゲーションタブ -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('dashboard')">
+                <span>🏠</span> ホーム
+            </button>
+            <button class="nav-tab" onclick="switchTab('discovery')">
+                <span>🔍</span> 趣味探索
+            </button>
+            <button class="nav-tab" onclick="switchTab('skills')">
+                <span>🎓</span> スキルシェア
+            </button>
+            <button class="nav-tab" onclick="switchTab('community')">
+                <span>👥</span> 地域活動
+            </button>
+            <button class="nav-tab" onclick="switchTab('health')">
+                <span>💪</span> 健康管理
+            </button>
+            <button class="nav-tab" onclick="switchTab('mentor')">
+                <span>🤝</span> メンター
+            </button>
+            <button class="nav-tab" onclick="switchTab('forum')">
+                <span>💬</span> 交流広場
+            </button>
+        </div>
+
+        <!-- ダッシュボード -->
+        <div id="dashboard" class="content-area active">
+            <div class="dashboard-grid">
+                <!-- 今日のおすすめ -->
+                <div class="dashboard-card recommendation-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: rgba(255,255,255,0.2);">
+                            ✨
+                        </div>
+                        <div class="card-title" style="color: white;">
+                            <h3>今日のおすすめ活動</h3>
+                            <p>AIがあなたにぴったりの活動を提案</p>
+                        </div>
+                    </div>
+                    <div class="recommendation-content">
+                        <div class="recommend-item" onclick="showActivityDetail('pottery')">
+                            <div style="font-size: 24px; margin-bottom: 8px;">🏺</div>
+                            <div style="font-weight: bold;">陶芸体験会</div>
+                            <div style="font-size: 12px; margin-top: 5px;">初心者歓迎・手ぶらOK</div>
+                            <span class="recommend-tag">今週土曜</span>
+                        </div>
+                        <div class="recommend-item" onclick="showActivityDetail('photo')">
+                            <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
+                            <div style="font-weight: bold;">写真散歩の会</div>
+                            <div style="font-size: 12px; margin-top: 5px;">地元の名所巡り</div>
+                            <span class="recommend-tag">明日14:00</span>
+                        </div>
+                        <div class="recommend-item" onclick="showActivityDetail('mentor')">
+                            <div style="font-size: 24px; margin-bottom: 8px;">👨‍🏫</div>
+                            <div style="font-weight: bold;">経営相談ボランティア</div>
+                            <div style="font-size: 12px; margin-top: 5px;">起業家支援</div>
+                            <span class="recommend-tag">募集中</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 活動スコア -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                            🏆
+                        </div>
+                        <div class="card-title">
+                            <h3>今月の活動スコア</h3>
+                            <p>先月比 +28%</p>
+                        </div>
+                    </div>
+                    <div class="health-stats">
+                        <div class="health-stat">
+                            <div class="health-stat-value">12</div>
+                            <div class="health-stat-label">参加イベント</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-value">38</div>
+                            <div class="health-stat-label">新しい出会い</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-value">5</div>
+                            <div class="health-stat-label">習得スキル</div>
+                        </div>
+                    </div>
+                    <div class="health-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%;">
+                                目標まであと25%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近の仲間 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            👥
+                        </div>
+                        <div class="card-title">
+                            <h3>最近つながった仲間</h3>
+                            <p>共通の趣味を持つ方々</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="mentor-card" style="flex: 1; min-width: 100px; padding: 10px;">
+                            <div class="mentor-avatar" style="width: 50px; height: 50px; font-size: 20px;">佐</div>
+                            <div style="font-size: 12px; margin-top: 5px;">佐藤さん</div>
+                            <div style="font-size: 10px; color: var(--gray);">釣り仲間</div>
+                        </div>
+                        <div class="mentor-card" style="flex: 1; min-width: 100px; padding: 10px;">
+                            <div class="mentor-avatar" style="width: 50px; height: 50px; font-size: 20px;">鈴</div>
+                            <div style="font-size: 12px; margin-top: 5px;">鈴木さん</div>
+                            <div style="font-size: 10px; color: var(--gray);">将棋友達</div>
+                        </div>
+                        <div class="mentor-card" style="flex: 1; min-width: 100px; padding: 10px;">
+                            <div class="mentor-avatar" style="width: 50px; height: 50px; font-size: 20px;">高</div>
+                            <div style="font-size: 12px; margin-top: 5px;">高橋さん</div>
+                            <div style="font-size: 10px; color: var(--gray);">園芸仲間</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 今週の予定 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                            📅
+                        </div>
+                        <div class="card-title">
+                            <h3>今週の予定</h3>
+                            <p>3件の活動予定</p>
+                        </div>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-date">
+                                <div class="activity-date-day">15</div>
+                                <div class="activity-date-month">火</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold;">囲碁サークル定例会</div>
+                                <div style="font-size: 12px; color: var(--gray);">14:00-16:00 公民館</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-date">
+                                <div class="activity-date-day">17</div>
+                                <div class="activity-date-month">木</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold;">料理教室：和食の基本</div>
+                                <div style="font-size: 12px; color: var(--gray);">10:00-12:00 料理スタジオ</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-date">
+                                <div class="activity-date-day">19</div>
+                                <div class="activity-date-month">土</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold;">ウォーキング同好会</div>
+                                <div style="font-size: 12px; color: var(--gray);">8:00-10:00 中央公園集合</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 趣味探索 -->
+        <div id="discovery" class="content-area">
+            <div class="forum-container">
+                <div class="forum-header">
+                    <h2>🔍 あなたにおすすめの趣味</h2>
+                    <button class="btn btn-primary" onclick="showHobbyQuiz()">
+                        診断を受ける
+                    </button>
+                </div>
+                <div style="margin: 20px 0;">
+                    <h3 style="margin-bottom: 15px;">興味のある分野を選択</h3>
+                    <div class="skill-grid">
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🎨</div>
+                            <div class="skill-name">アート・工芸</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🎵</div>
+                            <div class="skill-name">音楽・楽器</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🏃</div>
+                            <div class="skill-name">スポーツ</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">📚</div>
+                            <div class="skill-name">読書・文学</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🍳</div>
+                            <div class="skill-name">料理・グルメ</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🌿</div>
+                            <div class="skill-name">園芸・農業</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🎮</div>
+                            <div class="skill-name">ゲーム・パズル</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">📷</div>
+                            <div class="skill-name">写真・映像</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🚶</div>
+                            <div class="skill-name">散歩・旅行</div>
+                        </div>
+                        <div class="skill-item" onclick="toggleSkill(this)">
+                            <div class="skill-icon">🔧</div>
+                            <div class="skill-name">DIY・修理</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 15px;">おすすめの活動</h3>
+                    <div class="recommendation-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div class="dashboard-card" style="cursor: pointer;" onclick="showActivityDetail('hobby1')">
+                            <div style="font-size: 36px; text-align: center; margin-bottom: 10px;">🎣</div>
+                            <h4>釣り入門講座</h4>
+                            <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">初心者向けの釣り講座。道具の選び方から釣り場マナーまで</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px; color: var(--primary);">毎週土曜開催</span>
+                                <button class="btn btn-primary" style="padding: 5px 15px; font-size: 12px;">詳細</button>
+                            </div>
+                        </div>
+                        <div class="dashboard-card" style="cursor: pointer;" onclick="showActivityDetail('hobby2')">
+                            <div style="font-size: 36px; text-align: center; margin-bottom: 10px;">♟️</div>
+                            <h4>将棋サロン</h4>
+                            <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">初心者から有段者まで。対局と研究会を楽しむ</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px; color: var(--primary);">火・木曜日</span>
+                                <button class="btn btn-primary" style="padding: 5px 15px; font-size: 12px;">詳細</button>
+                            </div>
+                        </div>
+                        <div class="dashboard-card" style="cursor: pointer;" onclick="showActivityDetail('hobby3')">
+                            <div style="font-size: 36px; text-align: center; margin-bottom: 10px;">🖌️</div>
+                            <h4>水彩画教室</h4>
+                            <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">基礎から学ぶ水彩画。風景画を中心に</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px; color: var(--primary);">月曜午前</span>
+                                <button class="btn btn-primary" style="padding: 5px 15px; font-size: 12px;">詳細</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- スキルシェア -->
+        <div id="skills" class="content-area">
+            <div class="forum-container">
+                <div class="forum-header">
+                    <h2>🎓 スキルシェアリング</h2>
+                    <button class="btn btn-primary" onclick="showSkillRegister()">
+                        スキルを登録
+                    </button>
+                </div>
+                <div style="margin: 20px 0;">
+                    <h3 style="margin-bottom: 15px;">教えられるスキル</h3>
+                    <div class="mentor-cards">
+                        <div class="mentor-card">
+                            <div class="mentor-avatar">💼</div>
+                            <div class="mentor-name">経営・ビジネス</div>
+                            <div class="mentor-expertise">40年の経営経験</div>
+                            <div class="mentor-tags">
+                                <span class="mentor-tag">起業支援</span>
+                                <span class="mentor-tag">事業計画</span>
+                                <span class="mentor-tag">財務管理</span>
+                            </div>
+                            <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">教える</button>
+                        </div>
+                        <div class="mentor-card">
+                            <div class="mentor-avatar">🔨</div>
+                            <div class="mentor-name">大工・木工</div>
+                            <div class="mentor-expertise">建築業35年</div>
+                            <div class="mentor-tags">
+                                <span class="mentor-tag">日曜大工</span>
+                                <span class="mentor-tag">家具作り</span>
+                                <span class="mentor-tag">修理</span>
+                            </div>
+                            <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">教える</button>
+                        </div>
+                        <div class="mentor-card">
+                            <div class="mentor-avatar">🌐</div>
+                            <div class="mentor-name">英語・国際交流</div>
+                            <div class="mentor-expertise">海外駐在15年</div>
+                            <div class="mentor-tags">
+                                <span class="mentor-tag">ビジネス英語</span>
+                                <span class="mentor-tag">海外文化</span>
+                                <span class="mentor-tag">通訳案内</span>
+                            </div>
+                            <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">教える</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 15px;">学びたいスキル</h3>
+                    <div class="forum-posts">
+                        <div class="forum-post">
+                            <div class="post-header">
+                                <div class="post-author">
+                                    <div class="author-avatar">田</div>
+                                    <div>
+                                        <div style="font-weight: bold;">田中さん</div>
+                                        <div class="post-meta">スマートフォン・PC基礎</div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary" style="padding: 5px 15px;">申込み</button>
+                            </div>
+                            <div class="post-content">
+                                LINEの使い方、写真の整理、ネットショッピングなど、デジタル機器の基本操作を優しく教えます。
+                            </div>
+                        </div>
+                        <div class="forum-post">
+                            <div class="post-header">
+                                <div class="post-author">
+                                    <div class="author-avatar">中</div>
+                                    <div>
+                                        <div style="font-weight: bold;">中村さん</div>
+                                        <div class="post-meta">家庭菜園・有機農法</div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary" style="padding: 5px 15px;">申込み</button>
+                            </div>
+                            <div class="post-content">
+                                無農薬での野菜作り、堆肥作り、季節の野菜の育て方を実践的に学べます。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地域活動 -->
+        <div id="community" class="content-area">
+            <div class="forum-container">
+                <div class="forum-header">
+                    <h2>👥 地域活動マップ</h2>
+                    <button class="btn btn-primary" onclick="showActivityForm()">
+                        活動を企画する
+                    </button>
+                </div>
+                <div class="map-container">
+                    <div class="map-placeholder">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🗺️</div>
+                        <h3>あなたの地域の活動</h3>
+                        <p style="color: var(--gray); margin-top: 10px;">半径5km以内で12件の活動が見つかりました</p>
+                        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                            <button class="btn btn-primary">地図で見る</button>
+                            <button class="btn btn-secondary">リストで見る</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="activity-list" style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">今週の地域活動</h3>
+                    <div class="activity-item">
+                        <div class="activity-date">
+                            <div class="activity-date-day">15</div>
+                            <div class="activity-date-month">火</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold;">公園清掃ボランティア</div>
+                            <div style="font-size: 12px; color: var(--gray);">9:00-11:00 中央公園</div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">環境活動</span>
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">参加者15名</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-date">
+                            <div class="activity-date-day">16</div>
+                            <div class="activity-date-month">水</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold;">子ども見守り隊</div>
+                            <div style="font-size: 12px; color: var(--gray);">7:30-8:30, 15:00-16:00</div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">地域安全</span>
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">募集中</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-date">
+                            <div class="activity-date-day">18</div>
+                            <div class="activity-date-month">金</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold;">高齢者サポート相談会</div>
+                            <div style="font-size: 12px; color: var(--gray);">13:00-15:00 福祉センター</div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">福祉活動</span>
+                                <span style="background: var(--light); padding: 3px 10px; border-radius: 15px; font-size: 11px;">相談員募集</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 健康管理 -->
+        <div id="health" class="content-area">
+            <div class="dashboard-grid">
+                <div class="dashboard-card" style="grid-column: span 2;">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            💪
+                        </div>
+                        <div class="card-title">
+                            <h3>健康チャレンジ</h3>
+                            <p>今月の目標達成率</p>
+                        </div>
+                    </div>
+                    <div class="health-stats">
+                        <div class="health-stat">
+                            <div class="health-stat-value">8,234</div>
+                            <div class="health-stat-label">今日の歩数</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-value">120/78</div>
+                            <div class="health-stat-label">血圧</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-value">7.5h</div>
+                            <div class="health-stat-label">睡眠時間</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px;">週間チャレンジ</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 20px;">🚶</span>
+                                    <div>
+                                        <div style="font-weight: bold;">毎日1万歩</div>
+                                        <div style="font-size: 12px; color: var(--gray);">5/7日達成</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar" style="width: 100px;">
+                                    <div class="progress-fill" style="width: 71%;">71%</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 20px;">💧</span>
+                                    <div>
+                                        <div style="font-weight: bold;">水分補給2L</div>
+                                        <div style="font-size: 12px; color: var(--gray);">今日1.5L</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar" style="width: 100px;">
+                                    <div class="progress-fill" style="width: 75%;">75%</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 20px;">🧘</span>
+                                    <div>
+                                        <div style="font-weight: bold;">瞑想15分</div>
+                                        <div style="font-size: 12px; color: var(--gray);">4/7日達成</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar" style="width: 100px;">
+                                    <div class="progress-fill" style="width: 57%;">57%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                            🍽️
+                        </div>
+                        <div class="card-title">
+                            <h3>食事記録</h3>
+                            <p>バランスの良い食生活</p>
+                        </div>
+                    </div>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 60px; margin-bottom: 10px;">🥗</div>
+                        <button class="btn btn-primary" onclick="showMealRecord()">食事を記録</button>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="font-size: 14px; margin-bottom: 10px;">今日の栄養バランス</h4>
+                        <div style="display: grid; gap: 5px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                <span>タンパク質</span>
+                                <span style="color: var(--success);">適正</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                <span>炭水化物</span>
+                                <span style="color: var(--warning);">やや多い</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                <span>野菜</span>
+                                <span style="color: var(--danger);">不足</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- メンター -->
+        <div id="mentor" class="content-area">
+            <div class="forum-container">
+                <div class="forum-header">
+                    <h2>🤝 メンターシップ・プログラム</h2>
+                    <button class="btn btn-primary" onclick="showMentorForm()">
+                        メンターになる
+                    </button>
+                </div>
+                <div class="forum-categories">
+                    <button class="category-btn active">すべて</button>
+                    <button class="category-btn">ビジネス</button>
+                    <button class="category-btn">技術・工芸</button>
+                    <button class="category-btn">教育</button>
+                    <button class="category-btn">福祉</button>
+                </div>
+                <div class="mentor-cards">
+                    <div class="mentor-card">
+                        <div class="mentor-avatar">山</div>
+                        <div class="mentor-name">山田 太郎</div>
+                        <div class="mentor-expertise">元上場企業CEO・経営コンサルタント</div>
+                        <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">
+                            30年以上の経営経験を活かし、起業家や中小企業経営者をサポートします。
+                        </p>
+                        <div class="mentor-tags">
+                            <span class="mentor-tag">経営戦略</span>
+                            <span class="mentor-tag">資金調達</span>
+                            <span class="mentor-tag">組織作り</span>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">相談する</button>
+                    </div>
+                    <div class="mentor-card">
+                        <div class="mentor-avatar">伊</div>
+                        <div class="mentor-name">伊藤 健一</div>
+                        <div class="mentor-expertise">元エンジニア・ITコンサルタント</div>
+                        <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">
+                            プログラミングやデジタル化支援など、IT分野での相談に対応します。
+                        </p>
+                        <div class="mentor-tags">
+                            <span class="mentor-tag">プログラミング</span>
+                            <span class="mentor-tag">DX支援</span>
+                            <span class="mentor-tag">システム設計</span>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">相談する</button>
+                    </div>
+                    <div class="mentor-card">
+                        <div class="mentor-avatar">木</div>
+                        <div class="mentor-name">木村 正</div>
+                        <div class="mentor-expertise">元教育者・キャリアアドバイザー</div>
+                        <p style="font-size: 13px; color: var(--gray); margin: 10px 0;">
+                            若者の進路相談や学習支援、教育関連のアドバイスを行います。
+                        </p>
+                        <div class="mentor-tags">
+                            <span class="mentor-tag">進路相談</span>
+                            <span class="mentor-tag">学習支援</span>
+                            <span class="mentor-tag">教育相談</span>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 15px; width: 100%;">相談する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交流広場 -->
+        <div id="forum" class="content-area">
+            <div class="forum-container">
+                <div class="forum-header">
+                    <h2>💬 交流広場</h2>
+                    <button class="btn btn-primary" onclick="showNewPost()">
+                        投稿する
+                    </button>
+                </div>
+                <div class="forum-categories">
+                    <button class="category-btn active">すべて</button>
+                    <button class="category-btn">雑談</button>
+                    <button class="category-btn">相談</button>
+                    <button class="category-btn">募集</button>
+                    <button class="category-btn">報告</button>
+                </div>
+                <div class="forum-posts">
+                    <div class="forum-post">
+                        <div class="post-header">
+                            <div class="post-author">
+                                <div class="author-avatar">佐</div>
+                                <div>
+                                    <div style="font-weight: bold;">佐藤さん</div>
+                                    <div class="post-meta">2時間前</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="post-title">定年後の時間の使い方について</div>
+                        <div class="post-content">
+                            定年して3ヶ月が経ちました。最初は自由な時間を楽しんでいましたが、最近は時間を持て余し気味です。
+                            皆さんはどのように1日を過ごされていますか？アドバイスをいただけると嬉しいです。
+                        </div>
+                        <div class="post-actions">
+                            <div class="post-action">
+                                <span>👍</span> 12
+                            </div>
+                            <div class="post-action">
+                                <span>💬</span> 8件の返信
+                            </div>
+                            <div class="post-action">
+                                <span>🔗</span> シェア
+                            </div>
+                        </div>
+                    </div>
+                    <div class="forum-post">
+                        <div class="post-header">
+                            <div class="post-author">
+                                <div class="author-avatar">田</div>
+                                <div>
+                                    <div style="font-weight: bold;">田中さん</div>
+                                    <div class="post-meta">5時間前</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="post-title">【募集】将棋仲間を探しています</div>
+                        <div class="post-content">
+                            毎週水曜日の午後、公民館で将棋を指しています。初心者から有段者まで歓迎です。
+                            お茶を飲みながら楽しく対局しませんか？興味のある方はメッセージください。
+                        </div>
+                        <div class="post-actions">
+                            <div class="post-action">
+                                <span>👍</span> 8
+                            </div>
+                            <div class="post-action">
+                                <span>💬</span> 3件の返信
+                            </div>
+                            <div class="post-action">
+                                <span>🔗</span> シェア
+                            </div>
+                        </div>
+                    </div>
+                    <div class="forum-post">
+                        <div class="post-header">
+                            <div class="post-author">
+                                <div class="author-avatar">鈴</div>
+                                <div>
+                                    <div style="font-weight: bold;">鈴木さん</div>
+                                    <div class="post-meta">昨日</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="post-title">孫との関わり方</div>
+                        <div class="post-content">
+                            月に一度孫と会えるのですが、どんな遊びをしたら良いか悩んでいます。
+                            最近の子供は何に興味があるのでしょうか？良いアイデアがあれば教えてください。
+                        </div>
+                        <div class="post-actions">
+                            <div class="post-action">
+                                <span>👍</span> 15
+                            </div>
+                            <div class="post-action">
+                                <span>💬</span> 12件の返信
+                            </div>
+                            <div class="post-action">
+                                <span>🔗</span> シェア
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">タイトル</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div id="modalBody">
+                <!-- 動的コンテンツ -->
+            </div>
+        </div>
+    </div>
+
+    <!-- フローティングアクションボタン -->
+    <button class="fab" onclick="showQuickAction()">
+        <span>+</span>
+    </button>
+
+    <script>
+        // アプリケーションの初期化
+        class LifeNextChapter {
+            constructor() {
+                this.currentTab = 'dashboard';
+                this.userProfile = {
+                    name: '山田太郎',
+                    age: 65,
+                    interests: [],
+                    skills: [],
+                    level: 12,
+                    points: 1250,
+                    activities: []
+                };
+                this.init();
+            }
+
+            init() {
+                // ローディング画面を非表示
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        document.querySelector('.main-container').style.display = 'block';
+                    }, 500);
+                }, 1500);
+
+                // イベントリスナーの設定
+                this.setupEventListeners();
+                
+                // 天気情報の取得（シミュレーション）
+                this.updateWeather();
+                
+                // 通知のチェック
+                this.checkNotifications();
+            }
+
+            setupEventListeners() {
+                // タブ切り替え
+                document.querySelectorAll('.nav-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const tabName = e.currentTarget.textContent.trim().split(' ')[1];
+                        this.switchTab(this.getTabId(tabName));
+                    });
+                });
+
+                // カテゴリーボタン
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.currentTarget.parentElement.querySelectorAll('.category-btn').forEach(b => {
+                            b.classList.remove('active');
+                        });
+                        e.currentTarget.classList.add('active');
+                        this.filterContent(e.currentTarget.textContent);
+                    });
+                });
+            }
+
+            getTabId(tabName) {
+                const tabMap = {
+                    'ホーム': 'dashboard',
+                    '趣味探索': 'discovery',
+                    'スキルシェア': 'skills',
+                    '地域活動': 'community',
+                    '健康管理': 'health',
+                    'メンター': 'mentor',
+                    '交流広場': 'forum'
+                };
+                return tabMap[tabName] || 'dashboard';
+            }
+
+            updateWeather() {
+                const weathers = [
+                    '☀️ 晴れ 22°C',
+                    '⛅ 曇り 20°C',
+                    '🌤️ 晴れ時々曇り 21°C',
+                    '☁️ 曇り 19°C'
+                ];
+                const randomWeather = weathers[Math.floor(Math.random() * weathers.length)];
+                document.getElementById('weather').textContent = randomWeather;
+            }
+
+            checkNotifications() {
+                // 通知のシミュレーション
+                const notifications = Math.floor(Math.random() * 5) + 1;
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.textContent = notifications;
+                }
+            }
+
+            filterContent(category) {
+                console.log('フィルタリング:', category);
+                // フィルタリングロジックをここに実装
+            }
+        }
+
+        // グローバル関数
+        function switchTab(tabName) {
+            // すべてのタブコンテンツを非表示
+            document.querySelectorAll('.content-area').forEach(area => {
+                area.classList.remove('active');
+            });
+            
+            // すべてのタブボタンを非アクティブ化
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 選択したタブを表示
+            const selectedContent = document.getElementById(tabName);
+            if (selectedContent) {
+                selectedContent.classList.add('active');
+            }
+            
+            // 対応するタブボタンをアクティブ化
+            const tabTexts = {
+                'dashboard': 'ホーム',
+                'discovery': '趣味探索',
+                'skills': 'スキルシェア',
+                'community': '地域活動',
+                'health': '健康管理',
+                'mentor': 'メンター',
+                'forum': '交流広場'
+            };
+            
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                if (tab.textContent.includes(tabTexts[tabName])) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+
+        function toggleSkill(element) {
+            element.classList.toggle('active');
+            // スキル選択の処理
+            const skillName = element.querySelector('.skill-name').textContent;
+            console.log('スキル選択:', skillName);
+        }
+
+        function showModal(title, content) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('active');
+        }
+
+        function showProfile() {
+            const content = `
+                <div class="form-group">
+                    <h3>プロフィール設定</h3>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <div style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 48px; color: white;">
+                            👤
+                        </div>
+                        <button class="btn btn-secondary" style="margin-top: 10px;">写真を変更</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">お名前</label>
+                    <input type="text" class="form-input" value="山田太郎">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">年齢</label>
+                    <input type="number" class="form-input" value="65">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">自己紹介</label>
+                    <textarea class="form-textarea" placeholder="あなたについて教えてください">元会社員です。定年後は新しい趣味を見つけて充実した日々を送りたいと思っています。</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">興味のある分野</label>
+                    <div class="skill-grid" style="grid-template-columns: repeat(2, 1fr);">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" checked> スポーツ
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox"> 音楽
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" checked> 読書
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox"> 料理
+                        </label>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveProfile()">保存</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('プロフィール', content);
+        }
+
+        function showActivityDetail(activityId) {
+            const activities = {
+                'pottery': {
+                    title: '陶芸体験会',
+                    icon: '🏺',
+                    description: '初心者向けの陶芸体験会です。粘土から自分だけの器を作ってみませんか？',
+                    date: '今週土曜日 14:00-16:00',
+                    location: '市民文化センター 工芸室',
+                    capacity: '定員10名（残り3名）',
+                    fee: '材料費 1,500円'
+                },
+                'photo': {
+                    title: '写真散歩の会',
+                    icon: '📷',
+                    description: '季節の風景を撮影しながら、ゆっくりと散歩を楽しみます。',
+                    date: '明日 14:00-16:00',
+                    location: '中央公園 正門集合',
+                    capacity: '定員なし',
+                    fee: '無料'
+                },
+                'mentor': {
+                    title: '経営相談ボランティア',
+                    icon: '👨‍🏫',
+                    description: '起業を目指す若者への経営アドバイスをお願いします。',
+                    date: '毎週火曜日 18:00-20:00',
+                    location: '起業支援センター',
+                    capacity: 'メンター募集中',
+                    fee: '無料（交通費支給）'
+                }
+            };
+
+            const activity = activities[activityId] || activities['pottery'];
+            const content = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 64px; margin-bottom: 10px;">${activity.icon}</div>
+                    <h2>${activity.title}</h2>
+                </div>
+                <div class="form-group">
+                    <p style="line-height: 1.6;">${activity.description}</p>
+                </div>
+                <div style="background: var(--light); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <div style="display: grid; gap: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <span style="font-weight: bold; min-width: 80px;">日時:</span>
+                            <span>${activity.date}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <span style="font-weight: bold; min-width: 80px;">場所:</span>
+                            <span>${activity.location}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <span style="font-weight: bold; min-width: 80px;">定員:</span>
+                            <span>${activity.capacity}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <span style="font-weight: bold; min-width: 80px;">費用:</span>
+                            <span>${activity.fee}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="joinActivity('${activityId}')">参加申込</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
+                </div>
+            `;
+            showModal(activity.title, content);
+        }
+
+        function showHobbyQuiz() {
+            const content = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3>趣味診断</h3>
+                    <p style="color: var(--gray);">いくつかの質問に答えて、あなたにぴったりの趣味を見つけましょう</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">1. 活動する時間帯は？</label>
+                    <select class="form-select">
+                        <option>朝（6:00-10:00）</option>
+                        <option>午前（10:00-12:00）</option>
+                        <option>午後（13:00-17:00）</option>
+                        <option>夕方（17:00-20:00）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">2. 好きな活動スタイルは？</label>
+                    <select class="form-select">
+                        <option>一人でじっくり</option>
+                        <option>少人数グループ</option>
+                        <option>大人数でわいわい</option>
+                        <option>場合による</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">3. 体を動かすのは？</label>
+                    <select class="form-select">
+                        <option>大好き</option>
+                        <option>適度なら良い</option>
+                        <option>あまり好きではない</option>
+                        <option>全く動きたくない</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">4. 創作活動への興味は？</label>
+                    <select class="form-select">
+                        <option>とても興味がある</option>
+                        <option>少し興味がある</option>
+                        <option>あまり興味がない</option>
+                        <option>全く興味がない</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="showQuizResult()">診断結果を見る</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('趣味診断', content);
+        }
+
+        function showQuizResult() {
+            const content = `
+                <div style="text-align: center;">
+                    <h3>診断結果</h3>
+                    <div style="font-size: 64px; margin: 20px 0;">🎨</div>
+                    <h2 style="color: var(--primary);">アート・クリエイター タイプ</h2>
+                    <p style="margin: 20px 0; line-height: 1.6;">
+                        あなたは創造性豊かで、ものづくりを楽しむタイプです。
+                        手を動かして何かを作り出すことに喜びを感じます。
+                    </p>
+                </div>
+                <div style="background: var(--light); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="margin-bottom: 10px;">おすすめの趣味</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;">🏺 陶芸・彫刻</li>
+                        <li style="margin-bottom: 8px;">🎨 絵画・水彩画</li>
+                        <li style="margin-bottom: 8px;">📷 写真・映像制作</li>
+                        <li style="margin-bottom: 8px;">🔨 DIY・木工</li>
+                        <li style="margin-bottom: 8px;">🌿 園芸・盆栽</li>
+                    </ul>
+                </div>
+                <button class="btn btn-primary" onclick="closeModal()">閉じる</button>
+            `;
+            showModal('診断結果', content);
+        }
+
+        function showSkillRegister() {
+            const content = `
+                <h3>スキル登録</h3>
+                <p style="color: var(--gray); margin-bottom: 20px;">あなたの経験や知識を必要としている人がいます</p>
+                <div class="form-group">
+                    <label class="form-label">スキルカテゴリー</label>
+                    <select class="form-select">
+                        <option>ビジネス・経営</option>
+                        <option>技術・工芸</option>
+                        <option>教育・指導</option>
+                        <option>IT・デジタル</option>
+                        <option>語学・国際交流</option>
+                        <option>その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">スキル名</label>
+                    <input type="text" class="form-input" placeholder="例：経営戦略立案">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">経験年数</label>
+                    <input type="number" class="form-input" placeholder="例：30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">詳細説明</label>
+                    <textarea class="form-textarea" placeholder="どのような経験があり、何を教えられるか"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">提供可能な時間</label>
+                    <select class="form-select">
+                        <option>週1回程度</option>
+                        <option>週2-3回</option>
+                        <option>月2回程度</option>
+                        <option>不定期</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="registerSkill()">登録</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('スキル登録', content);
+        }
+
+        function showActivityForm() {
+            const content = `
+                <h3>活動を企画する</h3>
+                <div class="form-group">
+                    <label class="form-label">活動名</label>
+                    <input type="text" class="form-input" placeholder="例：朝のラジオ体操会">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">カテゴリー</label>
+                    <select class="form-select">
+                        <option>スポーツ・健康</option>
+                        <option>文化・芸術</option>
+                        <option>ボランティア</option>
+                        <option>学習・教育</option>
+                        <option>交流・親睦</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">日時</label>
+                    <input type="datetime-local" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">場所</label>
+                    <input type="text" class="form-input" placeholder="例：中央公園">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">詳細説明</label>
+                    <textarea class="form-textarea" placeholder="活動内容を詳しく説明してください"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="createActivity()">企画する</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('活動企画', content);
+        }
+
+        function showMealRecord() {
+            const content = `
+                <h3>食事記録</h3>
+                <div class="form-group">
+                    <label class="form-label">食事の種類</label>
+                    <select class="form-select">
+                        <option>朝食</option>
+                        <option>昼食</option>
+                        <option>夕食</option>
+                        <option>間食</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">メニュー</label>
+                    <textarea class="form-textarea" placeholder="何を食べましたか？"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">野菜の量</label>
+                    <select class="form-select">
+                        <option>たっぷり</option>
+                        <option>普通</option>
+                        <option>少なめ</option>
+                        <option>なし</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">写真</label>
+                    <button class="btn btn-secondary">📷 写真を追加</button>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="saveMeal()">記録</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('食事記録', content);
+        }
+
+        function showMentorForm() {
+            const content = `
+                <h3>メンター登録</h3>
+                <p style="color: var(--gray); margin-bottom: 20px;">あなたの経験を次世代に伝えてください</p>
+                <div class="form-group">
+                    <label class="form-label">専門分野</label>
+                    <input type="text" class="form-input" placeholder="例：経営戦略、マーケティング">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">経歴</label>
+                    <textarea class="form-textarea" placeholder="簡単な経歴を教えてください"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">メンタリング可能な内容</label>
+                    <textarea class="form-textarea" placeholder="どのような相談に対応できますか？"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">対応可能時間</label>
+                    <select class="form-select">
+                        <option>週1回 2時間程度</option>
+                        <option>月2回 各2時間</option>
+                        <option>随時対応可能</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="registerMentor()">登録</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('メンター登録', content);
+        }
+
+        function showNewPost() {
+            const content = `
+                <h3>新規投稿</h3>
+                <div class="form-group">
+                    <label class="form-label">カテゴリー</label>
+                    <select class="form-select">
+                        <option>雑談</option>
+                        <option>相談</option>
+                        <option>募集</option>
+                        <option>報告</option>
+                        <option>質問</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">タイトル</label>
+                    <input type="text" class="form-input" placeholder="投稿のタイトル">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">本文</label>
+                    <textarea class="form-textarea" style="min-height: 150px;" placeholder="みんなに伝えたいことを書いてください"></textarea>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox"> 匿名で投稿
+                    </label>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="submitPost()">投稿</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('新規投稿', content);
+        }
+
+        function showQuickAction() {
+            const content = `
+                <h3>クイックアクション</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px;">
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showActivityForm();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
+                        <div>活動を企画</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showNewPost();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">✍️</div>
+                        <div>投稿する</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showMealRecord();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">🍽️</div>
+                        <div>食事記録</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showHealthCheck();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">💊</div>
+                        <div>健康チェック</div>
+                    </button>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="closeModal()">閉じる</button>
+            `;
+            showModal('クイックアクション', content);
+        }
+
+        function showHealthCheck() {
+            const content = `
+                <h3>今日の健康チェック</h3>
+                <div class="form-group">
+                    <label class="form-label">体調はいかがですか？</label>
+                    <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0;">
+                        <button class="btn btn-secondary" style="font-size: 24px; padding: 15px;">😄</button>
+                        <button class="btn btn-secondary" style="font-size: 24px; padding: 15px;">🙂</button>
+                        <button class="btn btn-secondary" style="font-size: 24px; padding: 15px;">😐</button>
+                        <button class="btn btn-secondary" style="font-size: 24px; padding: 15px;">😔</button>
+                        <button class="btn btn-secondary" style="font-size: 24px; padding: 15px;">😷</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">血圧（上/下）</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" class="form-input" placeholder="120" style="flex: 1;">
+                        <span style="display: flex; align-items: center;">/</span>
+                        <input type="number" class="form-input" placeholder="80" style="flex: 1;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">歩数</label>
+                    <input type="number" class="form-input" placeholder="例：8000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">睡眠時間</label>
+                    <input type="number" class="form-input" placeholder="例：7.5" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">メモ</label>
+                    <textarea class="form-textarea" placeholder="気になることがあれば記入"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="saveHealthCheck()">記録</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('健康チェック', content);
+        }
+
+        // アクション関数
+        function joinActivity(activityId) {
+            alert('参加申込を受け付けました！詳細はメールでお送りします。');
+            closeModal();
+            // 実際のアプリでは、ここでサーバーに申込情報を送信
+        }
+
+        function saveProfile() {
+            alert('プロフィールを更新しました！');
+            closeModal();
+        }
+
+        function registerSkill() {
+            alert('スキルを登録しました！マッチする相手が見つかり次第お知らせします。');
+            closeModal();
+        }
+
+        function createActivity() {
+            alert('活動を企画しました！参加者の募集を開始します。');
+            closeModal();
+        }
+
+        function saveMeal() {
+            alert('食事を記録しました！');
+            closeModal();
+        }
+
+        function registerMentor() {
+            alert('メンター登録ありがとうございます！相談希望者をご紹介します。');
+            closeModal();
+        }
+
+        function submitPost() {
+            alert('投稿しました！');
+            closeModal();
+            // 投稿をフォーラムに追加
+            addNewPostToForum();
+        }
+
+        function saveHealthCheck() {
+            alert('健康状態を記録しました！');
+            closeModal();
+        }
+
+        function addNewPostToForum() {
+            // 新しい投稿をフォーラムに追加（シミュレーション）
+            const forumPosts = document.querySelector('#forum .forum-posts');
+            if (forumPosts) {
+                const newPost = document.createElement('div');
+                newPost.className = 'forum-post';
+                newPost.innerHTML = `
+                    <div class="post-header">
+                        <div class="post-author">
+                            <div class="author-avatar">山</div>
+                            <div>
+                                <div style="font-weight: bold;">山田さん（あなた）</div>
+                                <div class="post-meta">たった今</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="post-title">新しい投稿</div>
+                    <div class="post-content">
+                        投稿ありがとうございます！あなたの投稿がコミュニティに追加されました。
+                    </div>
+                    <div class="post-actions">
+                        <div class="post-action">
+                            <span>👍</span> 0
+                        </div>
+                        <div class="post-action">
+                            <span>💬</span> 返信する
+                        </div>
+                        <div class="post-action">
+                            <span>🔗</span> シェア
+                        </div>
+                    </div>
+                `;
+                forumPosts.insertBefore(newPost, forumPosts.firstChild);
+            }
+        }
+
+        // データ保存機能（LocalStorage使用）
+        class DataManager {
+            constructor() {
+                this.storageKey = 'lifeNextChapter';
+                this.loadData();
+            }
+
+            loadData() {
+                const savedData = localStorage.getItem(this.storageKey);
+                if (savedData) {
+                    try {
+                        const data = JSON.parse(savedData);
+                        this.applyData(data);
+                    } catch (e) {
+                        console.error('データ読み込みエラー:', e);
+                    }
+                }
+            }
+
+            saveData(data) {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(data));
+                } catch (e) {
+                    console.error('データ保存エラー:', e);
+                }
+            }
+
+            applyData(data) {
+                // 保存されたデータをUIに反映
+                console.log('データを適用:', data);
+            }
+        }
+
+        // アニメーション効果
+        function addAnimationEffects() {
+            // カードホバー効果
+            document.querySelectorAll('.dashboard-card').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+
+            // スクロールアニメーション
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.dashboard-card').forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'all 0.5s ease';
+                observer.observe(card);
+            });
+        }
+
+        // 通知システム
+        class NotificationSystem {
+            constructor() {
+                this.notifications = [];
+                this.checkInterval = 30000; // 30秒ごとにチェック
+                this.startChecking();
+            }
+
+            startChecking() {
+                setInterval(() => {
+                    this.checkNewNotifications();
+                }, this.checkInterval);
+            }
+
+            checkNewNotifications() {
+                // シミュレーション：ランダムに通知を生成
+                const random = Math.random();
+                if (random > 0.7) {
+                    this.addNotification({
+                        type: 'info',
+                        title: '新しい活動',
+                        message: 'あなたの興味に合う活動が見つかりました',
+                        timestamp: new Date()
+                    });
+                }
+            }
+
+            addNotification(notification) {
+                this.notifications.push(notification);
+                this.showNotification(notification);
+                this.updateBadge();
+            }
+
+            showNotification(notification) {
+                // トースト通知を表示
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: white;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease;
+                    max-width: 300px;
+                `;
+                toast.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px;">${notification.title}</div>
+                    <div style="font-size: 14px; color: var(--gray);">${notification.message}</div>
+                `;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        document.body.removeChild(toast);
+                    }, 300);
+                }, 3000);
+            }
+
+            updateBadge() {
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.textContent = this.notifications.length;
+                }
+            }
+        }
+
+        // アプリケーション初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new LifeNextChapter();
+            const dataManager = new DataManager();
+            const notificationSystem = new NotificationSystem();
+            
+            // アニメーション効果を追加
+            setTimeout(() => {
+                addAnimationEffects();
+            }, 500);
+
+            // モーダル外クリックで閉じる
+            document.getElementById('modal').addEventListener('click', (e) => {
+                if (e.target.id === 'modal') {
+                    closeModal();
+                }
+            });
+
+            // キーボードショートカット
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+
+            console.log('人生の次章アプリが起動しました');
+        });
+
+        // スタイルアニメーション追加
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
