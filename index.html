@@ -875,7 +875,7 @@
             } catch (error) {
                 clearTimeout(initTimeout);
                 console.error('Firebase初期化エラー:', error);
-                updateDebugInfo('エラー', 'エラー: ' + error.code, 'なし');
+                updateDebugInfo('エラー', 'エラー: ' + (error.code || error.message), 'なし');
                 
                 // APIキーエラーや設定エラーの場合
                 if (error.code === 'auth/api-key-not-valid' || 
@@ -884,39 +884,6 @@
                     showNotification('設定エラー', 'Firebase設定を確認してください。ローカルモードで動作します。', 'error');
                 }
                 
-                runInLocalMode();
-            }
-        }
-                    app = firebase.initializeApp(firebaseConfig);
-                    auth = firebase.auth();
-                    db = firebase.firestore();
-                    storage = firebase.storage();
-                    
-                    updateDebugInfo('Firebase初期化中', '接続中', 'なし');
-                    
-                    // 認証状態の監視
-                    auth.onAuthStateChanged((user) => {
-                        clearTimeout(initTimeout);
-                        
-                        if (user) {
-                            currentUser = user;
-                            updateDebugInfo('ログイン済み', '接続済み', user.email);
-                            showMainApp(user);
-                        } else {
-                            updateDebugInfo('未ログイン', '接続済み', 'なし');
-                            showAuthScreen();
-                        }
-                    });
-                    
-                } else {
-                    clearTimeout(initTimeout);
-                    console.log('Firebase SDKが読み込まれていません。ローカルモードで実行します。');
-                    runInLocalMode();
-                }
-            } catch (error) {
-                clearTimeout(initTimeout);
-                console.error('Firebase初期化エラー:', error);
-                updateDebugInfo('エラー', 'エラー', 'なし');
                 runInLocalMode();
             }
         }
@@ -1351,6 +1318,3 @@
                 initializeApp();
             }, 100);
         });
-    </script>
-</body>
-</html>
