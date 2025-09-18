@@ -1,697 +1,4 @@
-// グローバル関数
-        function switchTab(tabName) {
-            document.querySelectorAll('.content-area').forEach(area => {
-                area.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            const selectedContent = document.getElementById(tabName);
-            if (selectedContent) {
-                selectedContent.classList.add('active');
-            }
-            
-            event.target.closest('.nav-tab').classList.add('active');
-        }
-
-        function showModal(title, content) {
-            const modal = document.getElementById('modal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalBody = document.getElementById('modalBody');
-            
-            modalTitle.textContent = title;
-            modalBody.innerHTML = content;
-            modal.classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('active');
-        }
-
-        function showNotification(title, message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 5px;">${title}</div>
-                <div style="font-size: 14px; color: var(--gray);">${message}</div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-        }
-
-        // 投稿作成
-        function showNewPost() {
-            const content = `
-                <div class="form-group">
-                    <label class="form-label">タイトル</label>
-                    <input type="text" id="postTitle" class="form-input" placeholder="投稿のタイトル">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">本文</label>
-                    <textarea id="postContent" class="form-textarea" placeholder="みんなに伝えたいことを書いてください" rows="6"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">カテゴリー</label>
-                    <select id="postCategory" class="form-select">
-                        <option>雑談</option>
-                        <option>相談</option>
-                        <option>情報共有</option>
-                        <option>趣味</option>
-                        <option>健康</option>
-                        <option>その他</option>
-                    </select>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="submitPost()">投稿</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
-                </div>
-            `;
-            showModal('新規投稿', content);
-        }
-
-        async function submitPost() {
-            const title = document.getElementById('postTitle').value;
-            const content = document.getElementById('postContent').value;
-            const category = document.getElementById('postCategory').value;
-            
-            if (!title || !content) {
-                showNotification('エラー', 'タイトルと本文は必須です', 'error');
-                return;
-            }
-            
-            const postData = {
-                title: title,
-                content: content,
-                category: category,
-                authorId: currentUser ? currentUser.uid : 'local-user',
-                authorName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
-                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
-                likesCount: 0,
-                commentsCount: 0
-            };
-            
-            try {
-                if (db) {
-                    await db.collection('posts').add(postData);
-                } else {
-                    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
-                    posts.unshift(postData);
-                    localStorage.setItem('posts', JSON.stringify(posts));
-                    window.appInstance.loadLocalPosts();
-                }
-                
-                showNotification('投稿完了', '投稿が公開されました');
-                closeModal();
-            } catch (error) {
-                console.error('投稿エラー:', error);
-                showNotification('エラー', '投稿に失敗しました', 'error');
-            }
-        }
-
-        // 活動作成
-        function showCreateActivity() {
-            const content = `
-                <div class="form-group">
-                    <label class="form-label">活動名</label>
-                    <input type="text" id="activityTitle" class="form-input" placeholder="例：朝のウォーキング会">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">日付</label>
-                    <input type="date" id="activityDate" class="form-input" min="${new Date().toISOString().split('T')[0]}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">時間</label>
-                    <input type="time" id="activityTime" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">場所</label>
-                    <input type="text" id="activityLocation" class="form-input" placeholder="例：中央公園">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">定員（人）</label>
-                    <input type="number" id="activityCapacity" class="form-input" placeholder="例：10" min="1" max="100">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">詳細説明</label>
-                    <textarea id="activityDescription" class="form-textarea" placeholder="活動内容を詳しく説明してください" rows="4"></textarea>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="submitActivity()">作成</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
-                </div>
-            `;
-            showModal('活動を作成', content);
-        }
-
-        async function submitActivity() {
-            const title = document.getElementById('activityTitle').value;
-            const date = document.getElementById('activityDate').value;
-            const time = document.getElementById('activityTime').value;
-            const location = document.getElementById('activityLocation').value;
-            const capacity = document.getElementById('activityCapacity').value;
-            const description = document.getElementById('activityDescription').value;
-            
-            if (!title || !date || !time || !location) {
-                showNotification('エラー', '必須項目を入力してください', 'error');
-                return;
-            }
-            
-            const activityData = {
-                title: title,
-                date: db ? firebase.firestore.Timestamp.fromDate(new Date(date)) : date,
-                time: time,
-                location: location,
-                capacity: parseInt(capacity) || 0,
-                description: description,
-                organizerId: currentUser ? currentUser.uid : 'local-user',
-                organizerName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
-                participants: [],
-                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
-            };
-            
-            try {
-                if (db) {
-                    await db.collection('activities').add(activityData);
-                } else {
-                    const activities = JSON.parse(localStorage.getItem('activities') || '[]');
-                    activities.push(activityData);
-                    localStorage.setItem('activities', JSON.stringify(activities));
-                    window.appInstance.loadLocalActivities();
-                }
-                
-                showNotification('作成完了', '活動が作成されました');
-                closeModal();
-            } catch (error) {
-                console.error('活動作成エラー:', error);
-                showNotification('エラー', '活動の作成に失敗しました', 'error');
-            }
-        }
-
-        // スキル登録
-        function showSkillRegister() {
-            const content = `
-                <div class="form-group">
-                    <label class="form-label">タイプ</label>
-                    <select id="skillType" class="form-select">
-                        <option value="teach">教えられます</option>
-                        <option value="learn">学びたいです</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">カテゴリー</label>
-                    <select id="skillCategory" class="form-select">
-                        <option>ビジネス・経営</option>
-                        <option>技術・工芸</option>
-                        <option>IT・デジタル</option>
-                        <option>語学・国際交流</option>
-                        <option>健康・スポーツ</option>
-                        <option>芸術・文化</option>
-                        <option>料理・食文化</option>
-                        <option>趣味・娯楽</option>
-                        <option>その他</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">スキル名</label>
-                    <input type="text" id="skillTitle" class="form-input" placeholder="例：経営戦略立案">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">経験年数</label>
-                    <input type="number" id="skillExperience" class="form-input" placeholder="例：30" min="0">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">詳細説明</label>
-                    <textarea id="skillDescription" class="form-textarea" placeholder="どんなことを教えられるか/学びたいか詳しく説明してください" rows="4"></textarea>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="submitSkill()">登録</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
-                </div>
-            `;
-            showModal('スキル登録', content);
-        }
-
-        async function submitSkill() {
-            const type = document.getElementById('skillType').value;
-            const category = document.getElementById('skillCategory').value;
-            const title = document.getElementById('skillTitle').value;
-            const experience = document.getElementById('skillExperience').value;
-            const description = document.getElementById('skillDescription').value;
-            
-            if (!title || !description) {
-                showNotification('エラー', 'スキル名と説明は必須です', 'error');
-                return;
-            }
-            
-            const skillData = {
-                type: type,
-                category: category,
-                title: title,
-                experience: parseInt(experience) || 0,
-                description: description,
-                userId: currentUser ? currentUser.uid : 'local-user',
-                userName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
-                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
-            };
-            
-            try {
-                if (db) {
-                    await db.collection('skills').add(skillData);
-                } else {
-                    const skills = JSON.parse(localStorage.getItem('skills') || '[]');
-                    skills.unshift(skillData);
-                    localStorage.setItem('skills', JSON.stringify(skills));
-                    window.appInstance.loadLocalSkills();
-                }
-                
-                showNotification('登録完了', 'スキルが登録されました');
-                closeModal();
-            } catch (error) {
-                console.error('スキル登録エラー:', error);
-                showNotification('エラー', 'スキル登録に失敗しました', 'error');
-            }
-        }
-
-        // その他の機能
-        function showProfile() {
-            if (!currentUser) {
-                showNotification('エラー', 'ログインが必要です', 'error');
-                return;
-            }
-            
-            const content = `
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 36px; color: white;">
-                        ${currentUser ? (currentUser.displayName || currentUser.email)[0].toUpperCase() : '?'}
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">名前</label>
-                    <input type="text" id="profileName" class="form-input" value="${currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト'}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">メールアドレス</label>
-                    <input type="email" class="form-input" value="${currentUser ? currentUser.email : 'guest@example.com'}" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">プロフィール</label>
-                    <textarea id="profileBio" class="form-textarea" placeholder="自己紹介を書いてください" rows="4"></textarea>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="updateProfile()">更新</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
-                </div>
-            `;
-            showModal('プロフィール', content);
-        }
-
-        async function updateProfile() {
-            if (!currentUser) return;
-            
-            const displayName = document.getElementById('profileName').value;
-            const bio = document.getElementById('profileBio').value;
-            
-            try {
-                // Firebaseのプロフィールを更新
-                await currentUser.updateProfile({
-                    displayName: displayName
-                });
-                
-                // Firestoreのユーザー情報を更新
-                if (db) {
-                    await db.collection('users').doc(currentUser.uid).update({
-                        displayName: displayName,
-                        profile: bio,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-                
-                // UIを更新
-                document.getElementById('userName').textContent = displayName;
-                document.getElementById('userAvatar').textContent = displayName[0].toUpperCase();
-                
-                showNotification('更新完了', 'プロフィールを更新しました');
-                closeModal();
-            } catch (error) {
-                console.error('プロフィール更新エラー:', error);
-                showNotification('エラー', 'プロフィールの更新に失敗しました', 'error');
-            }
-        }
-
-        function showQuickAction() {
-            const content = `
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showNewPost();">
-                        <div style="font-size: 32px; margin-bottom: 10px;">✍️</div>
-                        <div>投稿する</div>
-                    </button>
-                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showCreateActivity();">
-                        <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
-                        <div>活動を作成</div>
-                    </button>
-                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showSkillRegister();">
-                        <div style="font-size: 32px; margin-bottom: 10px;">🎓</div>
-                        <div>スキル登録</div>
-                    </button>
-                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); switchTab('forum');">
-                        <div style="font-size: 32px; margin-bottom: 10px;">💬</div>
-                        <div>交流広場へ</div>
-                    </button>
-                </div>
-                <button class="btn btn-secondary btn-block" style="margin-top: 15px;" onclick="closeModal()">閉じる</button>
-            `;
-            showModal('クイックアクション', content);
-        }
-
-        // 投稿関連機能
-        async function likePost(postId) {
-            if (!currentUser) {
-                showNotification('エラー', 'ログインが必要です', 'error');
-                return;
-            }
-            
-            try {
-                if (db) {
-                    const batch = db.batch();
-                    const postRef = db.collection('posts').doc(postId);
-                    const likeRef = db.collection('users').doc(currentUser.uid)
-                        .collection('likes').doc(postId);
-                    
-                    if (window.appInstance.userLikes.has(postId)) {
-                        // いいねを取り消し
-                        batch.update(postRef, {
-                            likesCount: firebase.firestore.FieldValue.increment(-1)
-                        });
-                        batch.delete(likeRef);
-                        window.appInstance.userLikes.delete(postId);
-                    } else {
-                        // いいねを追加
-                        batch.update(postRef, {
-                            likesCount: firebase.firestore.FieldValue.increment(1)
-                        });
-                        batch.set(likeRef, {
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        window.appInstance.userLikes.add(postId);
-                    }
-                    
-                    await batch.commit();
-                } else {
-                    // ローカルモード
-                    showNotification('いいね！', '投稿にいいねしました');
-                }
-            } catch (error) {
-                console.error('いいねエラー:', error);
-                showNotification('エラー', 'いいねに失敗しました', 'error');
-            }
-        }
-
-        async function toggleComments(postId) {
-            const commentsSection = document.getElementById(`comments-${postId}`);
-            commentsSection.classList.toggle('active');
-            
-            if (commentsSection.classList.contains('active')) {
-                await loadComments(postId);
-            }
-        }
-
-        async function loadComments(postId) {
-            if (!db) return;
-            
-            try {
-                const snapshot = await db.collection('posts').doc(postId)
-                    .collection('comments')
-                    .orderBy('createdAt', 'asc')
-                    .get();
-                
-                const commentsHtml = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return `
-                        <div class="comment">
-                            <div class="comment-header">
-                                <div class="comment-author">${data.authorName}</div>
-                                <div class="comment-time">${window.appInstance.getTimeAgo(data.createdAt)}</div>
-                            </div>
-                            <div class="comment-text">${data.text}</div>
-                        </div>
-                    `;
-                }).join('');
-                
-                document.getElementById(`commentsList-${postId}`).innerHTML = commentsHtml || '<p style="text-align: center; color: var(--gray); padding: 10px;">まだコメントはありません</p>';
-            } catch (error) {
-                console.error('コメント読み込みエラー:', error);
-            }
-        }
-
-        async function submitComment(postId) {
-            if (!currentUser) {
-                showNotification('エラー', 'ログインが必要です', 'error');
-                return;
-            }
-            
-            const input = document.getElementById(`commentInput-${postId}`);
-            const text = input.value.trim();
-            
-            if (!text) return;
-            
-            try {
-                if (db) {
-                    const batch = db.batch();
-                    
-                    // コメントを追加
-                    const commentRef = db.collection('posts').doc(postId)
-                        .collection('comments').doc();
-                    batch.set(commentRef, {
-                        text: text,
-                        authorId: currentUser.uid,
-                        authorName: currentUser.displayName || currentUser.email.split('@')[0],
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    // コメント数を更新
-                    const postRef = db.collection('posts').doc(postId);
-                    batch.update(postRef, {
-                        commentsCount: firebase.firestore.FieldValue.increment(1)
-                    });
-                    
-                    await batch.commit();
-                    input.value = '';
-                    await loadComments(postId);
-                    showNotification('コメント投稿', 'コメントを投稿しました');
-                }
-            } catch (error) {
-                console.error('コメント投稿エラー:', error);
-                showNotification('エラー', 'コメント投稿に失敗しました', 'error');
-            }
-        }
-
-        async function deletePost(postId) {
-            if (!confirm('本当にこの投稿を削除しますか？')) return;
-            
-            try {
-                if (db) {
-                    // コメントも含めて削除
-                    const batch = db.batch();
-                    
-                    // コメントを削除
-                    const commentsSnapshot = await db.collection('posts').doc(postId)
-                        .collection('comments').get();
-                    commentsSnapshot.forEach(doc => {
-                        batch.delete(doc.ref);
-                    });
-                    
-                    // 投稿を削除
-                    batch.delete(db.collection('posts').doc(postId));
-                    
-                    await batch.commit();
-                    showNotification('削除完了', '投稿を削除しました');
-                }
-            } catch (error) {
-                console.error('投稿削除エラー:', error);
-                showNotification('エラー', '投稿の削除に失敗しました', 'error');
-            }
-        }
-
-        // 活動関連機能
-        async function joinActivity(activityId) {
-            if (!currentUser) {
-                showNotification('エラー', 'ログインが必要です', 'error');
-                return;
-            }
-            
-            try {
-                if (db) {
-                    const batch = db.batch();
-                    
-                    // 活動に参加者を追加
-                    const activityRef = db.collection('activities').doc(activityId);
-                    const participant = {
-                        uid: currentUser.uid,
-                        name: currentUser.displayName || currentUser.email.split('@')[0]
-                    };
-                    batch.update(activityRef, {
-                        participants: firebase.firestore.FieldValue.arrayUnion(participant)
-                    });
-                    
-                    // ユーザーの参加活動に追加
-                    const userActivityRef = db.collection('users').doc(currentUser.uid)
-                        .collection('joinedActivities').doc(activityId);
-                    batch.set(userActivityRef, {
-                        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    await batch.commit();
-                    window.appInstance.userActivities.add(activityId);
-                    window.appInstance.loadMyActivities();
-                    showNotification('参加登録', '活動への参加を登録しました');
-                }
-            } catch (error) {
-                console.error('参加登録エラー:', error);
-                showNotification('エラー', '参加登録に失敗しました', 'error');
-            }
-        }
-
-        async function cancelActivity(activityId) {
-            if (!confirm('本当に参加をキャンセルしますか？')) return;
-            
-            try {
-                if (db) {
-                    const batch = db.batch();
-                    
-                    // 活動から参加者を削除
-                    const activityRef = db.collection('activities').doc(activityId);
-                    const participant = {
-                        uid: currentUser.uid,
-                        name: currentUser.displayName || currentUser.email.split('@')[0]
-                    };
-                    batch.update(activityRef, {
-                        participants: firebase.firestore.FieldValue.arrayRemove(participant)
-                    });
-                    
-                    // ユーザーの参加活動から削除
-                    const userActivityRef = db.collection('users').doc(currentUser.uid)
-                        .collection('joinedActivities').doc(activityId);
-                    batch.delete(userActivityRef);
-                    
-                    await batch.commit();
-                    window.appInstance.userActivities.delete(activityId);
-                    window.appInstance.loadMyActivities();
-                    showNotification('キャンセル', '参加をキャンセルしました');
-                }
-            } catch (error) {
-                console.error('キャンセルエラー:', error);
-                showNotification('エラー', 'キャンセルに失敗しました', 'error');
-            }
-        }
-
-        async function deleteActivity(activityId) {
-            if (!confirm('本当にこの活動を削除しますか？')) return;
-            
-            try {
-                if (db) {
-                    await db.collection('activities').doc(activityId).delete();
-                    showNotification('削除完了', '活動を削除しました');
-                }
-            } catch (error) {
-                console.error('活動削除エラー:', error);
-                showNotification('エラー', '活動の削除に失敗しました', 'error');
-            }
-        }
-
-        // スキル関連機能
-        async function contactSkill(skillId, userId, userName) {
-            const content = `
-                <div class="form-group">
-                    <label class="form-label">宛先</label>
-                    <input type="text" class="form-input" value="${userName}" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">メッセージ</label>
-                    <textarea id="messageText" class="form-textarea" placeholder="メッセージを入力してください" rows="6"></textarea>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="sendMessage('${userId}', '${userName}')">送信</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
-                </div>
-            `;
-            showModal('メッセージを送る', content);
-        }
-
-        async function sendMessage(toUserId, toUserName) {
-            if (!currentUser) {
-                showNotification('エラー', 'ログインが必要です', 'error');
-                return;
-            }
-            
-            const messageText = document.getElementById('messageText').value.trim();
-            
-            if (!messageText) {
-                showNotification('エラー', 'メッセージを入力してください', 'error');
-                return;
-            }
-            
-            try {
-                if (db) {
-                    // メッセージを送信
-                    await db.collection('messages').add({
-                        fromId: currentUser.uid,
-                        fromName: currentUser.displayName || currentUser.email.split('@')[0],
-                        toId: toUserId,
-                        toName: toUserName,
-                        text: messageText,
-                        read: false,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    showNotification('送信完了', 'メッセージを送信しました');
-                    closeModal();
-                } else {
-                    showNotification('送信完了', 'メッセージを送信しました（デモ）');
-                    closeModal();
-                }
-            } catch (error) {
-                console.error('メッセージ送信エラー:', error);
-                showNotification('エラー', 'メッセージの送信に失敗しました', 'error');
-            }
-        }
-
-        async function deleteSkill(skillId) {
-            if (!confirm('本当にこのスキルを削除しますか？')) return;
-            
-            try {
-                if (db) {
-                    await db.collection('skills').doc(skillId).delete();
-                    showNotification('削除完了', 'スキルを削除しました');
-                }
-            } catch (error) {
-                console.error('スキル削除エラー:', error);
-                showNotification('エラー', 'スキルの削除に失敗しました', 'error');
-            }
-        }
-
-        function logout() {
-            if (auth) {
-                auth.signOut();
-            } else {
-                location.reload();
-            }
-        }
-
-        // アプリケーション初期化
-        document.addEventListener('DOMContentLoaded', () => {
-            window.appInstance = new LifeNextChapter();
-        });
-    </script>
-</body>
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -702,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     
     <style>
         :root {
@@ -865,11 +171,6 @@
 
         .btn-block {
             width: 100%;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
         }
 
         /* メインコンテナ */
@@ -1184,65 +485,6 @@
             color: var(--primary);
         }
 
-        .post-action.liked {
-            color: var(--danger);
-        }
-
-        /* コメントセクション */
-        .comments-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
-            display: none;
-        }
-
-        .comments-section.active {
-            display: block;
-        }
-
-        .comment {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .comment-header {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 5px;
-            align-items: center;
-        }
-
-        .comment-author {
-            font-weight: bold;
-            font-size: 13px;
-        }
-
-        .comment-time {
-            font-size: 11px;
-            color: var(--gray);
-        }
-
-        .comment-text {
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .comment-input-area {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .comment-input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #e0e0e0;
-            border-radius: 20px;
-            font-size: 13px;
-        }
-
         /* モーダル */
         .modal {
             display: none;
@@ -1330,40 +572,6 @@
             color: white;
         }
 
-        /* メッセージエリア */
-        .messages-container {
-            max-height: 400px;
-            overflow-y: auto;
-            background: var(--light);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .message-item {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .message-item.own {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            margin-left: 20%;
-        }
-
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            margin-bottom: 5px;
-        }
-
-        .message-text {
-            font-size: 14px;
-        }
-
         /* フローティングアクションボタン */
         .fab {
             position: fixed;
@@ -1403,29 +611,6 @@
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-
-        /* 参加者リスト */
-        .participants-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .participant-chip {
-            background: var(--light);
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }
 
         /* レスポンシブ */
@@ -1473,10 +658,6 @@
                     <div class="form-group">
                         <label class="form-label">年齢</label>
                         <input type="number" id="age" class="form-input" placeholder="65" min="50" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">プロフィール</label>
-                        <textarea id="profile" class="form-textarea" placeholder="自己紹介を書いてください"></textarea>
                     </div>
                 </div>
                 <div class="form-group">
@@ -1649,7 +830,7 @@
     </button>
 
     <script>
-        // Firebase設定
+        // Firebase設定（環境に応じて変更してください）
         const firebaseConfig = {
             apiKey: "AIzaSyDO22osX4X6gxhtXH4Oighg8GmAErtgMgY",
             authDomain: "teinengo65.firebaseapp.com",
@@ -1660,17 +841,14 @@
         };
 
         // Firebase初期化
-        let app, auth, db, storage;
+        let app, auth, db;
         let currentUser = null;
-        let unsubscribers = [];
 
         // アプリケーションクラス
         class LifeNextChapter {
             constructor() {
                 this.initFirebase();
                 this.setupEventListeners();
-                this.userLikes = new Set();
-                this.userActivities = new Set();
             }
 
             initFirebase() {
@@ -1684,7 +862,6 @@
                     
                     auth = firebase.auth();
                     db = firebase.firestore();
-                    storage = firebase.storage();
                     
                     // オフライン永続化を有効化
                     db.enablePersistence().catch((err) => {
@@ -1732,9 +909,7 @@
                 this.localStorage = {
                     posts: JSON.parse(localStorage.getItem('posts') || '[]'),
                     activities: JSON.parse(localStorage.getItem('activities') || '[]'),
-                    skills: JSON.parse(localStorage.getItem('skills') || '[]'),
-                    comments: JSON.parse(localStorage.getItem('comments') || '[]'),
-                    messages: JSON.parse(localStorage.getItem('messages') || '[]')
+                    skills: JSON.parse(localStorage.getItem('skills') || '[]')
                 };
                 
                 this.loadLocalData();
@@ -1773,7 +948,7 @@
                 document.querySelector('.main-container').style.display = 'none';
             }
 
-            async onUserLogin(user) {
+            onUserLogin(user) {
                 document.getElementById('loadingScreen').style.display = 'none';
                 document.getElementById('authScreen').style.display = 'none';
                 document.querySelector('.main-container').style.display = 'block';
@@ -1782,33 +957,8 @@
                 document.getElementById('userName').textContent = user.displayName || user.email.split('@')[0];
                 document.getElementById('userAvatar').textContent = (user.displayName || user.email)[0].toUpperCase();
                 
-                // ユーザーのいいねと参加活動を読み込み
-                await this.loadUserPreferences();
-                
                 // データを読み込み
                 this.loadUserData();
-            }
-
-            async loadUserPreferences() {
-                if (!db || !currentUser) return;
-                
-                try {
-                    // ユーザーのいいね履歴を読み込み
-                    const likesSnapshot = await db.collection('users').doc(currentUser.uid)
-                        .collection('likes').get();
-                    likesSnapshot.forEach(doc => {
-                        this.userLikes.add(doc.id);
-                    });
-                    
-                    // ユーザーの参加活動を読み込み
-                    const activitiesSnapshot = await db.collection('users').doc(currentUser.uid)
-                        .collection('joinedActivities').get();
-                    activitiesSnapshot.forEach(doc => {
-                        this.userActivities.add(doc.id);
-                    });
-                } catch (error) {
-                    console.error('ユーザー設定読み込みエラー:', error);
-                }
             }
 
             toggleAuthMode() {
@@ -1837,7 +987,6 @@
                         // 新規登録
                         const displayName = document.getElementById('displayName').value;
                         const age = document.getElementById('age').value;
-                        const profile = document.getElementById('profile').value;
                         
                         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                         
@@ -1849,12 +998,9 @@
                         // Firestoreにユーザー情報を保存
                         await db.collection('users').doc(userCredential.user.uid).set({
                             displayName: displayName,
-                            age: parseInt(age),
-                            profile: profile,
+                            age: age,
                             email: email,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            skills: [],
-                            interests: []
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
                         
                         showNotification('登録完了', 'アカウントが作成されました');
@@ -1865,33 +1011,17 @@
                     }
                 } catch (error) {
                     console.error('認証エラー:', error);
-                    let errorMessage = 'エラーが発生しました';
-                    if (error.code === 'auth/weak-password') {
-                        errorMessage = 'パスワードは6文字以上にしてください';
-                    } else if (error.code === 'auth/email-already-in-use') {
-                        errorMessage = 'このメールアドレスは既に使用されています';
-                    } else if (error.code === 'auth/user-not-found') {
-                        errorMessage = 'ユーザーが見つかりません';
-                    } else if (error.code === 'auth/wrong-password') {
-                        errorMessage = 'パスワードが間違っています';
-                    }
-                    showNotification('エラー', errorMessage, 'error');
+                    showNotification('エラー', error.message, 'error');
                 }
             }
 
             async loadUserData() {
-                // 全サブスクリプションをクリア
-                unsubscribers.forEach(unsubscribe => unsubscribe());
-                unsubscribers = [];
-                
                 // 投稿を読み込み
                 this.loadPosts();
                 // 活動を読み込み
                 this.loadActivities();
                 // スキルを読み込み
                 this.loadSkills();
-                // 参加予定の活動を読み込み
-                this.loadMyActivities();
             }
 
             async loadPosts() {
@@ -1900,37 +1030,38 @@
                     return;
                 }
                 
-                // リアルタイムリスナーを設定
-                const unsubscribe = db.collection('posts')
-                    .orderBy('createdAt', 'desc')
-                    .limit(20)
-                    .onSnapshot((snapshot) => {
-                        const postsHtml = snapshot.docs.map(doc => {
-                            const data = doc.data();
-                            return this.createPostHtml(doc.id, data);
-                        }).join('');
-                        
-                        document.getElementById('forumPosts').innerHTML = postsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだ投稿がありません</p>';
-                        
-                        // 最新投稿をダッシュボードにも表示
-                        const latestPostsHtml = snapshot.docs.slice(0, 3).map(doc => {
-                            const data = doc.data();
-                            return `<div style="padding: 10px; background: var(--light); border-radius: 8px; margin-bottom: 10px; cursor: pointer;" onclick="switchTab('forum')">
-                                <div style="font-weight: bold; font-size: 13px;">${data.title}</div>
-                                <div style="font-size: 12px; color: var(--gray); margin-top: 5px;">${data.authorName}</div>
-                            </div>`;
-                        }).join('');
-                        
-                        document.getElementById('latestPosts').innerHTML = latestPostsHtml || '<p style="text-align: center; color: var(--gray); padding: 20px;">まだ投稿がありません</p>';
-                    });
-                
-                unsubscribers.push(unsubscribe);
+                try {
+                    const snapshot = await db.collection('posts')
+                        .orderBy('createdAt', 'desc')
+                        .limit(10)
+                        .get();
+                    
+                    const postsHtml = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return this.createPostHtml(doc.id, data);
+                    }).join('');
+                    
+                    document.getElementById('forumPosts').innerHTML = postsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだ投稿がありません</p>';
+                    
+                    // 最新投稿をダッシュボードにも表示
+                    const latestPostsHtml = snapshot.docs.slice(0, 3).map(doc => {
+                        const data = doc.data();
+                        return `<div style="padding: 10px; background: var(--light); border-radius: 8px; margin-bottom: 10px;">
+                            <div style="font-weight: bold; font-size: 13px;">${data.title}</div>
+                            <div style="font-size: 12px; color: var(--gray); margin-top: 5px;">${data.authorName}</div>
+                        </div>`;
+                    }).join('');
+                    
+                    document.getElementById('latestPosts').innerHTML = latestPostsHtml || '<p style="text-align: center; color: var(--gray); padding: 20px;">まだ投稿がありません</p>';
+                } catch (error) {
+                    console.error('投稿読み込みエラー:', error);
+                }
             }
 
             loadLocalPosts() {
                 const posts = this.localStorage.posts;
                 const postsHtml = posts.map((post, index) => {
-                    return this.createPostHtml(`local-${index}`, post);
+                    return this.createPostHtml(index, post);
                 }).join('');
                 
                 document.getElementById('forumPosts').innerHTML = postsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだ投稿がありません</p>';
@@ -1938,10 +1069,6 @@
 
             createPostHtml(id, data) {
                 const timeAgo = this.getTimeAgo(data.createdAt);
-                const isLiked = this.userLikes.has(id);
-                const likesCount = data.likesCount || 0;
-                const commentsCount = data.commentsCount || 0;
-                
                 return `
                     <div class="forum-post" data-id="${id}">
                         <div class="post-header">
@@ -1952,25 +1079,15 @@
                                     <div class="post-meta">${timeAgo}</div>
                                 </div>
                             </div>
-                            ${data.authorId === currentUser?.uid ? `
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deletePost('${id}')">削除</button>
-                            ` : ''}
                         </div>
                         <div class="post-title">${data.title}</div>
                         <div class="post-content">${data.content}</div>
                         <div class="post-actions">
-                            <div class="post-action ${isLiked ? 'liked' : ''}" onclick="likePost('${id}')">
-                                <span>👍</span> ${likesCount}
+                            <div class="post-action" onclick="likePost('${id}')">
+                                <span>👍</span> ${data.likes || 0}
                             </div>
-                            <div class="post-action" onclick="toggleComments('${id}')">
-                                <span>💬</span> ${commentsCount}件の返信
-                            </div>
-                        </div>
-                        <div class="comments-section" id="comments-${id}">
-                            <div id="commentsList-${id}"></div>
-                            <div class="comment-input-area">
-                                <input type="text" class="comment-input" id="commentInput-${id}" placeholder="コメントを入力...">
-                                <button class="btn btn-primary" style="padding: 8px 15px; font-size: 12px;" onclick="submitComment('${id}')">送信</button>
+                            <div class="post-action" onclick="showComments('${id}')">
+                                <span>💬</span> ${data.comments || 0}件の返信
                             </div>
                         </div>
                     </div>
@@ -1983,26 +1100,28 @@
                     return;
                 }
                 
-                const unsubscribe = db.collection('activities')
-                    .where('date', '>=', new Date())
-                    .orderBy('date', 'asc')
-                    .limit(10)
-                    .onSnapshot((snapshot) => {
-                        const activitiesHtml = snapshot.docs.map(doc => {
-                            const data = doc.data();
-                            return this.createActivityHtml(doc.id, data);
-                        }).join('');
-                        
-                        document.getElementById('activitiesList').innerHTML = activitiesHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">現在予定されている活動はありません</p>';
-                    });
-                
-                unsubscribers.push(unsubscribe);
+                try {
+                    const snapshot = await db.collection('activities')
+                        .where('date', '>=', new Date())
+                        .orderBy('date', 'asc')
+                        .limit(10)
+                        .get();
+                    
+                    const activitiesHtml = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return this.createActivityHtml(doc.id, data);
+                    }).join('');
+                    
+                    document.getElementById('activitiesList').innerHTML = activitiesHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">現在予定されている活動はありません</p>';
+                } catch (error) {
+                    console.error('活動読み込みエラー:', error);
+                }
             }
 
             loadLocalActivities() {
                 const activities = this.localStorage.activities;
                 const activitiesHtml = activities.map((activity, index) => {
-                    return this.createActivityHtml(`local-${index}`, activity);
+                    return this.createActivityHtml(index, activity);
                 }).join('');
                 
                 document.getElementById('activitiesList').innerHTML = activitiesHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">現在予定されている活動はありません</p>';
@@ -2010,9 +1129,6 @@
 
             createActivityHtml(id, data) {
                 const date = data.date ? new Date(data.date.seconds ? data.date.seconds * 1000 : data.date) : new Date();
-                const isJoined = this.userActivities.has(id);
-                const participants = data.participants || [];
-                
                 return `
                     <div class="activity-item" data-id="${id}">
                         <div class="activity-date">
@@ -2020,41 +1136,12 @@
                             <div class="activity-date-month">${date.getMonth() + 1}月</div>
                         </div>
                         <div style="flex: 1;">
-                            <div style="font-weight: bold; font-size: 16px;">${data.title}</div>
-                            <div style="font-size: 12px; color: var(--gray); margin: 5px 0;">
-                                📍 ${data.location} | ⏰ ${data.time} | 👥 ${participants.length}人参加
-                            </div>
-                            <div style="font-size: 13px; margin-top: 5px; line-height: 1.5;">${data.description}</div>
-                            ${participants.length > 0 ? `
-                                <div class="participants-list">
-                                    ${participants.slice(0, 5).map(p => `
-                                        <div class="participant-chip">
-                                            <span>👤</span> ${p.name || 'メンバー'}
-                                        </div>
-                                    `).join('')}
-                                    ${participants.length > 5 ? `
-                                        <div class="participant-chip">
-                                            +${participants.length - 5}人
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            ` : ''}
-                            <div style="margin-top: 10px; display: flex; gap: 10px;">
-                                ${isJoined ? `
-                                    <button class="btn btn-secondary" style="padding: 5px 15px; font-size: 12px;" onclick="cancelActivity('${id}')">
-                                        参加をキャンセル
-                                    </button>
-                                ` : `
-                                    <button class="btn btn-primary" style="padding: 5px 15px; font-size: 12px;" onclick="joinActivity('${id}')">
-                                        参加する
-                                    </button>
-                                `}
-                                ${data.organizerId === currentUser?.uid ? `
-                                    <button class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;" onclick="deleteActivity('${id}')">
-                                        削除
-                                    </button>
-                                ` : ''}
-                            </div>
+                            <div style="font-weight: bold;">${data.title}</div>
+                            <div style="font-size: 12px; color: var(--gray);">${data.time} ${data.location}</div>
+                            <div style="font-size: 13px; margin-top: 5px;">${data.description}</div>
+                            <button class="btn btn-primary" style="margin-top: 10px; padding: 5px 15px; font-size: 12px;" onclick="joinActivity('${id}')">
+                                参加する
+                            </button>
                         </div>
                     </div>
                 `;
@@ -2066,25 +1153,27 @@
                     return;
                 }
                 
-                const unsubscribe = db.collection('skills')
-                    .orderBy('createdAt', 'desc')
-                    .limit(20)
-                    .onSnapshot((snapshot) => {
-                        const skillsHtml = snapshot.docs.map(doc => {
-                            const data = doc.data();
-                            return this.createSkillHtml(doc.id, data);
-                        }).join('');
-                        
-                        document.getElementById('skillsList').innerHTML = skillsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだスキル登録がありません</p>';
-                    });
-                
-                unsubscribers.push(unsubscribe);
+                try {
+                    const snapshot = await db.collection('skills')
+                        .orderBy('createdAt', 'desc')
+                        .limit(10)
+                        .get();
+                    
+                    const skillsHtml = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return this.createSkillHtml(doc.id, data);
+                    }).join('');
+                    
+                    document.getElementById('skillsList').innerHTML = skillsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだスキル登録がありません</p>';
+                } catch (error) {
+                    console.error('スキル読み込みエラー:', error);
+                }
             }
 
             loadLocalSkills() {
                 const skills = this.localStorage.skills;
                 const skillsHtml = skills.map((skill, index) => {
-                    return this.createSkillHtml(`local-${index}`, skill);
+                    return this.createSkillHtml(index, skill);
                 }).join('');
                 
                 document.getElementById('skillsList').innerHTML = skillsHtml || '<p style="text-align: center; color: var(--gray); padding: 40px;">まだスキル登録がありません</p>';
@@ -2094,96 +1183,22 @@
                 return `
                     <div style="background: var(--light); border-radius: 10px; padding: 20px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div style="flex: 1;">
+                            <div>
                                 <h4>${data.title}</h4>
-                                <p style="color: var(--gray); font-size: 13px; margin: 5px 0;">
-                                    ${data.category} - ${data.experience}年の経験
-                                </p>
-                                <p style="font-size: 14px; margin-top: 10px; line-height: 1.5;">${data.description}</p>
-                                <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                                <p style="color: var(--gray); font-size: 13px; margin: 5px 0;">${data.category} - ${data.experience}年の経験</p>
+                                <p style="font-size: 14px; margin-top: 10px;">${data.description}</p>
+                                <div style="margin-top: 10px;">
                                     <span style="background: white; padding: 5px 10px; border-radius: 15px; font-size: 12px;">
-                                        ${data.type === 'teach' ? '🎓 教えられます' : '📚 学びたいです'}
-                                    </span>
-                                    <span style="font-size: 12px; color: var(--gray);">
-                                        by ${data.userName}
+                                        ${data.type === 'teach' ? '教えられます' : '学びたいです'}
                                     </span>
                                 </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 5px;">
-                                <button class="btn btn-primary" style="padding: 8px 20px; font-size: 13px;" onclick="contactSkill('${id}', '${data.userId}', '${data.userName}')">
-                                    連絡する
-                                </button>
-                                ${data.userId === currentUser?.uid ? `
-                                    <button class="btn btn-danger" style="padding: 8px 20px; font-size: 13px;" onclick="deleteSkill('${id}')">
-                                        削除
-                                    </button>
-                                ` : ''}
-                            </div>
+                            <button class="btn btn-primary" style="padding: 8px 20px; font-size: 13px;" onclick="contactSkill('${id}')">
+                                連絡する
+                            </button>
                         </div>
                     </div>
                 `;
-            }
-
-            async loadMyActivities() {
-                if (!currentUser || !db) return;
-                
-                try {
-                    // ユーザーが参加している活動を取得
-                    const activitiesRef = db.collection('users').doc(currentUser.uid)
-                        .collection('joinedActivities');
-                    
-                    const snapshot = await activitiesRef.get();
-                    
-                    if (snapshot.empty) {
-                        document.getElementById('myActivities').innerHTML = `
-                            <p style="text-align: center; color: var(--gray); padding: 20px;">
-                                まだ参加予定の活動がありません
-                            </p>
-                        `;
-                        return;
-                    }
-                    
-                    // 各活動の詳細を取得
-                    const activities = [];
-                    for (const doc of snapshot.docs) {
-                        const activityDoc = await db.collection('activities').doc(doc.id).get();
-                        if (activityDoc.exists) {
-                            activities.push({
-                                id: doc.id,
-                                ...activityDoc.data()
-                            });
-                        }
-                    }
-                    
-                    // 日付順にソート
-                    activities.sort((a, b) => {
-                        const dateA = a.date?.seconds ? new Date(a.date.seconds * 1000) : new Date();
-                        const dateB = b.date?.seconds ? new Date(b.date.seconds * 1000) : new Date();
-                        return dateA - dateB;
-                    });
-                    
-                    const html = activities.slice(0, 3).map(activity => {
-                        const date = activity.date ? new Date(activity.date.seconds ? activity.date.seconds * 1000 : activity.date) : new Date();
-                        return `
-                            <div style="background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: pointer;" onclick="switchTab('activities')">
-                                <div style="display: flex; gap: 10px;">
-                                    <div style="min-width: 40px; text-align: center;">
-                                        <div style="font-size: 16px; font-weight: bold; color: var(--primary);">${date.getDate()}</div>
-                                        <div style="font-size: 10px; color: var(--gray);">${date.getMonth() + 1}月</div>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: bold; font-size: 13px;">${activity.title}</div>
-                                        <div style="font-size: 11px; color: var(--gray);">${activity.time} ${activity.location}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    document.getElementById('myActivities').innerHTML = html;
-                } catch (error) {
-                    console.error('参加活動読み込みエラー:', error);
-                }
             }
 
             getTimeAgo(timestamp) {
@@ -2199,10 +1214,382 @@
                 if (diff < 604800) return `${Math.floor(diff / 86400)}日前`;
                 return date.toLocaleDateString('ja-JP');
             }
+        }
 
-            loadLocalData() {
-                this.loadLocalPosts();
-                this.loadLocalActivities();
-                this.loadLocalSkills();
+        // グローバル関数
+        function switchTab(tabName) {
+            document.querySelectorAll('.content-area').forEach(area => {
+                area.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            const selectedContent = document.getElementById(tabName);
+            if (selectedContent) {
+                selectedContent.classList.add('active');
+            }
+            
+            event.target.closest('.nav-tab').classList.add('active');
+        }
+
+        function showModal(title, content) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function showNotification(title, message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 5px;">${title}</div>
+                <div style="font-size: 14px; color: var(--gray);">${message}</div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // 投稿作成
+        function showNewPost() {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">タイトル</label>
+                    <input type="text" id="postTitle" class="form-input" placeholder="投稿のタイトル">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">本文</label>
+                    <textarea id="postContent" class="form-textarea" placeholder="みんなに伝えたいことを書いてください"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="submitPost()">投稿</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('新規投稿', content);
+        }
+
+        async function submitPost() {
+            const title = document.getElementById('postTitle').value;
+            const content = document.getElementById('postContent').value;
+            
+            if (!title || !content) {
+                showNotification('エラー', '必須項目を入力してください', 'error');
+                return;
+            }
+            
+            const postData = {
+                title: title,
+                content: content,
+                authorId: currentUser ? currentUser.uid : 'local-user',
+                authorName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
+                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString(),
+                likes: 0,
+                comments: 0
+            };
+            
+            try {
+                if (db) {
+                    await db.collection('posts').add(postData);
+                } else {
+                    // ローカルストレージに保存
+                    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+                    posts.unshift(postData);
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                }
+                
+                showNotification('投稿完了', '投稿が公開されました');
+                closeModal();
+                
+                // リロード
+                if (window.appInstance) {
+                    window.appInstance.loadPosts();
+                }
+            } catch (error) {
+                console.error('投稿エラー:', error);
+                showNotification('エラー', '投稿に失敗しました', 'error');
             }
         }
+
+        // 活動作成
+        function showCreateActivity() {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">活動名</label>
+                    <input type="text" id="activityTitle" class="form-input" placeholder="例：朝のウォーキング会">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">日付</label>
+                    <input type="date" id="activityDate" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">時間</label>
+                    <input type="time" id="activityTime" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">場所</label>
+                    <input type="text" id="activityLocation" class="form-input" placeholder="例：中央公園">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">詳細説明</label>
+                    <textarea id="activityDescription" class="form-textarea" placeholder="活動内容を詳しく説明してください"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="submitActivity()">作成</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('活動を作成', content);
+        }
+
+        async function submitActivity() {
+            const title = document.getElementById('activityTitle').value;
+            const date = document.getElementById('activityDate').value;
+            const time = document.getElementById('activityTime').value;
+            const location = document.getElementById('activityLocation').value;
+            const description = document.getElementById('activityDescription').value;
+            
+            if (!title || !date || !time || !location) {
+                showNotification('エラー', '必須項目を入力してください', 'error');
+                return;
+            }
+            
+            const activityData = {
+                title: title,
+                date: db ? firebase.firestore.Timestamp.fromDate(new Date(date)) : date,
+                time: time,
+                location: location,
+                description: description,
+                organizerId: currentUser ? currentUser.uid : 'local-user',
+                organizerName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
+                participants: [],
+                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+            };
+            
+            try {
+                if (db) {
+                    await db.collection('activities').add(activityData);
+                } else {
+                    const activities = JSON.parse(localStorage.getItem('activities') || '[]');
+                    activities.push(activityData);
+                    localStorage.setItem('activities', JSON.stringify(activities));
+                }
+                
+                showNotification('作成完了', '活動が作成されました');
+                closeModal();
+                
+                if (window.appInstance) {
+                    window.appInstance.loadActivities();
+                }
+            } catch (error) {
+                console.error('活動作成エラー:', error);
+                showNotification('エラー', '活動の作成に失敗しました', 'error');
+            }
+        }
+
+        // スキル登録
+        function showSkillRegister() {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">タイプ</label>
+                    <select id="skillType" class="form-select">
+                        <option value="teach">教えられます</option>
+                        <option value="learn">学びたいです</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">カテゴリー</label>
+                    <select id="skillCategory" class="form-select">
+                        <option>ビジネス・経営</option>
+                        <option>技術・工芸</option>
+                        <option>IT・デジタル</option>
+                        <option>語学・国際交流</option>
+                        <option>趣味・娯楽</option>
+                        <option>その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">スキル名</label>
+                    <input type="text" id="skillTitle" class="form-input" placeholder="例：経営戦略立案">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">経験年数</label>
+                    <input type="number" id="skillExperience" class="form-input" placeholder="例：30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">詳細説明</label>
+                    <textarea id="skillDescription" class="form-textarea" placeholder="詳しく説明してください"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="submitSkill()">登録</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                </div>
+            `;
+            showModal('スキル登録', content);
+        }
+
+        async function submitSkill() {
+            const type = document.getElementById('skillType').value;
+            const category = document.getElementById('skillCategory').value;
+            const title = document.getElementById('skillTitle').value;
+            const experience = document.getElementById('skillExperience').value;
+            const description = document.getElementById('skillDescription').value;
+            
+            if (!title || !description) {
+                showNotification('エラー', '必須項目を入力してください', 'error');
+                return;
+            }
+            
+            const skillData = {
+                type: type,
+                category: category,
+                title: title,
+                experience: experience,
+                description: description,
+                userId: currentUser ? currentUser.uid : 'local-user',
+                userName: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト',
+                createdAt: db ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+            };
+            
+            try {
+                if (db) {
+                    await db.collection('skills').add(skillData);
+                } else {
+                    const skills = JSON.parse(localStorage.getItem('skills') || '[]');
+                    skills.unshift(skillData);
+                    localStorage.setItem('skills', JSON.stringify(skills));
+                }
+                
+                showNotification('登録完了', 'スキルが登録されました');
+                closeModal();
+                
+                if (window.appInstance) {
+                    window.appInstance.loadSkills();
+                }
+            } catch (error) {
+                console.error('スキル登録エラー:', error);
+                showNotification('エラー', 'スキル登録に失敗しました', 'error');
+            }
+        }
+
+        // その他の機能
+        function showProfile() {
+            const content = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 36px; color: white;">
+                        ${currentUser ? (currentUser.displayName || currentUser.email)[0].toUpperCase() : '?'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">名前</label>
+                    <input type="text" class="form-input" value="${currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : 'ゲスト'}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">メールアドレス</label>
+                    <input type="email" class="form-input" value="${currentUser ? currentUser.email : 'guest@example.com'}" readonly>
+                </div>
+                <button class="btn btn-secondary btn-block" onclick="closeModal()">閉じる</button>
+            `;
+            showModal('プロフィール', content);
+        }
+
+        function showQuickAction() {
+            const content = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showNewPost();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">✍️</div>
+                        <div>投稿する</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showCreateActivity();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
+                        <div>活動を作成</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); showSkillRegister();">
+                        <div style="font-size: 32px; margin-bottom: 10px;">🎓</div>
+                        <div>スキル登録</div>
+                    </button>
+                    <button class="dashboard-card" style="padding: 20px; cursor: pointer;" onclick="closeModal(); switchTab('forum');">
+                        <div style="font-size: 32px; margin-bottom: 10px;">💬</div>
+                        <div>交流広場へ</div>
+                    </button>
+                </div>
+                <button class="btn btn-secondary btn-block" style="margin-top: 15px;" onclick="closeModal()">閉じる</button>
+            `;
+            showModal('クイックアクション', content);
+        }
+
+        async function joinActivity(activityId) {
+            if (!currentUser) {
+                showNotification('エラー', 'ログインが必要です', 'error');
+                return;
+            }
+            
+            try {
+                if (db) {
+                    await db.collection('activities').doc(activityId).update({
+                        participants: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                    });
+                }
+                
+                showNotification('参加登録', '活動への参加を登録しました');
+            } catch (error) {
+                console.error('参加登録エラー:', error);
+                showNotification('エラー', '参加登録に失敗しました', 'error');
+            }
+        }
+
+        async function likePost(postId) {
+            // いいね機能（簡易実装）
+            showNotification('いいね！', '投稿にいいねしました');
+        }
+
+        function showComments(postId) {
+            // コメント表示（簡易実装）
+            showNotification('準備中', 'コメント機能は準備中です');
+        }
+
+        function contactSkill(skillId) {
+            // スキル連絡（簡易実装）
+            showNotification('準備中', 'メッセージ機能は準備中です');
+        }
+
+        function logout() {
+            if (auth) {
+                auth.signOut();
+            } else {
+                location.reload();
+            }
+        }
+
+        // アプリケーション初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            window.appInstance = new LifeNextChapter();
+        });
+
+        // スタイルアニメーション
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
