@@ -339,7 +339,6 @@ function InputScreen({
                 const status   = myData[dk];
                 const st       = status ? getSt(status) : null;
                 const isToday  = dk === todayKey;
-                const isFuture = dk > todayKey;
                 const dow      = idx % 7;
                 const isWknd   = dow === 0 || dow === 6;
                 const isOpen   = popup === dk;
@@ -351,12 +350,12 @@ function InputScreen({
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}>
                     <div
-                      onClick={e => { e.stopPropagation(); if (!isFuture) setPopup(isOpen ? null : dk); }}
+                      onClick={e => { e.stopPropagation(); setPopup(isOpen ? null : dk); }}
                       style={{
                         minHeight: 72, padding: "6px 6px 4px",
                         background: isToday ? "rgba(99,102,241,0.12)"
                           : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
-                        cursor: isFuture ? "default" : "pointer",
+                        cursor: "pointer",
                         display: "flex", flexDirection: "column", gap: 4,
                         transition: "background 0.12s",
                       }}
@@ -364,7 +363,6 @@ function InputScreen({
                       <div style={{
                         fontSize: 12, fontWeight: isToday ? 900 : 600,
                         color: isToday ? "#818cf8"
-                          : isFuture ? "rgba(255,255,255,0.2)"
                           : dow === 0 ? "#f87171" : dow === 6 ? "#93c5fd"
                           : "rgba(255,255,255,0.7)",
                         display: "flex", alignItems: "center", gap: 3,
@@ -385,7 +383,7 @@ function InputScreen({
                           fontSize: 10, fontWeight: 800, textAlign: "center", lineHeight: 1.3,
                         }}>{st.label}</div>
                       )}
-                      {!st && !isFuture && !isWknd && (
+                      {!st && !isWknd && (
                         <div style={{
                           fontSize: 9, color: "rgba(255,255,255,0.15)",
                           textAlign: "center", marginTop: 2,
@@ -468,61 +466,40 @@ function InputScreen({
 function BoardScreen({ year, month, attendanceData, members, teams, statuses, getTeam, getSt, onBack }) {
   const [filterTeam, setFilterTeam] = useState("ALL");
 
-  const todayStatuses = useMemo(() => {
-    const map = {};
-    members.forEach(m => { map[m.id] = attendanceData[m.id]?.[todayKey] || null; });
-    return map;
-  }, [attendanceData, members]);
+  const days = new Date(year, month, 0).getDate();
+  const allDays = Array.from({ length: days }, (_, i) => i + 1);
 
-  const displayed  = filterTeam === "ALL" ? teams : teams.filter(t => t.id === filterTeam);
-  const presentAll = members.filter(m => todayStatuses[m.id] === "出勤").length;
-  const notInput   = members.filter(m => !todayStatuses[m.id]).length;
-  const dateLabel  = `${NOW.getMonth() + 1}/${NOW.getDate()}（${DOW[NOW.getDay()]}）`;
+  const displayedMembers = useMemo(() =>
+    filterTeam === "ALL"
+      ? members
+      : members.filter(m => m.teamId === filterTeam),
+    [members, filterTeam]
+  );
+
+  // 今日の出勤人数
+  const presentToday = members.filter(m =>
+    attendanceData[m.id]?.[todayKey] === "出勤"
+  ).length;
+
+  const CELL_W = 44;
+  const DATE_COL_W = 52;
 
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 12px" }}>
+    <div style={{ padding: "16px 12px" }}>
       {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between", marginBottom: 18,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-              {year}年{month}月 · 本日 {dateLabel}
-            </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+            {year}年{month}月 · 今日の出勤 {presentToday}/{members.length}人
           </div>
         </div>
-        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-          <Chip label="出勤" val={presentAll} color="#22c55e" />
-          <Chip label="未入力" val={notInput}   color="#94a3b8" />
-        </div>
-      </div>
-
-      {/* Status summary bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-        {statuses.map(s => {
-          const cnt = members.filter(m => todayStatuses[m.id] === s.id).length;
-          if (!cnt) return null;
-          const st = getSt(s.id);
-          return (
-            <div key={s.id} style={{
-              display: "flex", alignItems: "center", gap: 5,
-              padding: "4px 10px", borderRadius: 7,
-              background: st.bg, border: `1px solid ${st.border}`,
-            }}>
-              <span style={{ fontSize: 11, color: st.color, fontWeight: 700 }}>{st.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 900, color: st.color }}>{cnt}</span>
-            </div>
-          );
-        })}
       </div>
 
       {/* Team filter */}
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        {[{ id: "ALL", name: "全班", color: "#6366f1" }, ...teams].map(item => {
+        {[{ id: "ALL", name: "全班" }, ...teams].map(item => {
           const t      = teams.find(t => t.id === item.id);
           const active = filterTeam === item.id;
           const col    = t ? t.color : "#6366f1";
@@ -539,67 +516,141 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
         })}
       </div>
 
-      {/* Team cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {displayed.map(team => {
-          const tm      = members.filter(m => m.teamId === team.id);
-          const present = tm.filter(m => todayStatuses[m.id] === "出勤").length;
-          return (
-            <div key={team.id} style={{
-              background: "rgba(255,255,255,0.03)", borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.07)",
-            }}>
-              <div style={{
-                padding: "10px 14px",
-                background: `linear-gradient(90deg,${team.color}22,transparent)`,
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                borderLeft: `3px solid ${team.color}`,
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-              }}>
-                <span style={{ fontWeight: 800, fontSize: 14, color: team.accent }}>{team.name}</span>
-                <span style={{
-                  fontSize: 11, padding: "2px 10px", borderRadius: 20,
-                  background: "rgba(34,197,94,0.18)", color: "#22c55e", fontWeight: 800,
-                }}>出勤 {present}/{tm.length}</span>
-              </div>
-              <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
-                {tm.map(mem => {
-                  const sid = todayStatuses[mem.id];
-                  const st  = sid ? getSt(sid) : null;
-                  return (
-                    <div key={mem.id} style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "7px 10px", borderRadius: 9,
-                      background: "rgba(255,255,255,0.025)",
+      {/* Monthly table */}
+      <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
+        <table style={{
+          borderCollapse: "collapse", fontSize: 11,
+          minWidth: DATE_COL_W + displayedMembers.length * CELL_W,
+        }}>
+          {/* Column headers: member names */}
+          <thead>
+            <tr>
+              <th style={{
+                position: "sticky", left: 0, zIndex: 10,
+                background: "#131520", minWidth: DATE_COL_W,
+                padding: "8px 6px", borderBottom: "1px solid rgba(255,255,255,0.1)",
+                borderRight: "1px solid rgba(255,255,255,0.08)",
+                color: "rgba(255,255,255,0.3)", fontSize: 10,
+              }}>日付</th>
+              {displayedMembers.map(mem => {
+                const t = getTeam(mem.teamId);
+                return (
+                  <th key={mem.id} style={{
+                    minWidth: CELL_W, maxWidth: CELL_W,
+                    padding: "6px 2px",
+                    borderBottom: "1px solid rgba(255,255,255,0.1)",
+                    borderRight: "1px solid rgba(255,255,255,0.04)",
+                    background: "#131520",
+                    textAlign: "center",
+                  }}>
+                    <div style={{
+                      fontSize: 9, fontWeight: 700,
+                      color: t ? t.accent : "rgba(255,255,255,0.6)",
+                      writingMode: "vertical-rl",
+                      whiteSpace: "nowrap",
+                      margin: "0 auto",
+                      maxHeight: 72, overflow: "hidden",
+                    }}>{mem.name}</div>
+                    {mem.role && (
+                      <div style={{
+                        fontSize: 8, color: "rgba(139,92,246,0.9)",
+                        marginTop: 2,
+                      }}>{mem.role}</div>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {allDays.map(day => {
+              const dk    = dateKey(year, month, day);
+              const dow   = new Date(year, month - 1, day).getDay();
+              const isWknd   = dow === 0 || dow === 6;
+              const isToday  = dk === todayKey;
+              const rowBg = isToday  ? "rgba(99,102,241,0.14)"
+                          : isWknd   ? "rgba(255,255,255,0.02)"
+                          : "transparent";
+
+              return (
+                <tr key={dk} style={{ background: rowBg }}>
+                  {/* Date cell */}
+                  <td style={{
+                    position: "sticky", left: 0, zIndex: 5,
+                    background: isToday ? "#1e2040"
+                      : isWknd ? "#111320" : "#0d0f18",
+                    padding: "5px 8px",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    borderRight: "1px solid rgba(255,255,255,0.08)",
+                    whiteSpace: "nowrap",
+                  }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: isToday ? 900 : 600,
+                      color: isToday ? "#818cf8"
+                        : dow === 0 ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
+                        : "rgba(255,255,255,0.65)",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{mem.name}</span>
-                        {mem.role && (
-                          <span style={{
-                            fontSize: 9, padding: "1px 5px", borderRadius: 4,
-                            background: "rgba(139,92,246,0.2)", color: "#a78bfa", fontWeight: 700,
-                          }}>{mem.role}</span>
+                      {String(month).padStart(2, "0")}/{String(day).padStart(2, "0")}
+                    </span>
+                    <span style={{
+                      marginLeft: 4, fontSize: 9,
+                      color: dow === 0 ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
+                        : "rgba(255,255,255,0.3)",
+                    }}>({DOW[dow]})</span>
+                    {isToday && (
+                      <span style={{
+                        marginLeft: 4, fontSize: 8, color: "#818cf8",
+                        background: "rgba(99,102,241,0.25)",
+                        borderRadius: 3, padding: "0 3px", fontWeight: 800,
+                      }}>今日</span>
+                    )}
+                  </td>
+                  {/* Member status cells */}
+                  {displayedMembers.map(mem => {
+                    const sid = attendanceData[mem.id]?.[dk] || null;
+                    const st  = sid ? getSt(sid) : null;
+                    return (
+                      <td key={mem.id} style={{
+                        textAlign: "center", padding: "3px 2px",
+                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        borderRight: "1px solid rgba(255,255,255,0.04)",
+                        minWidth: CELL_W,
+                      }}>
+                        {st ? (
+                          <div style={{
+                            display: "inline-block",
+                            background: st.bg,
+                            border: `1px solid ${st.border}`,
+                            color: st.color,
+                            borderRadius: 4, padding: "2px 4px",
+                            fontSize: 10, fontWeight: 800,
+                            lineHeight: 1.3,
+                          }}>{st.label}</div>
+                        ) : (
+                          <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 10 }}>-</span>
                         )}
-                      </div>
-                      {st ? (
-                        <div style={{
-                          background: st.bg, border: `1px solid ${st.border}`,
-                          color: st.color, borderRadius: 7, padding: "4px 10px",
-                          fontSize: 11, fontWeight: 800,
-                        }}>{st.label}</div>
-                      ) : (
-                        <div style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          color: "rgba(255,255,255,0.25)", borderRadius: 7,
-                          padding: "4px 10px", fontSize: 11,
-                        }}>未入力</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+        {statuses.map(s => {
+          const st = getSt(s.id);
+          return (
+            <div key={s.id} style={{
+              fontSize: 10, padding: "2px 8px", borderRadius: 5,
+              background: st.bg, color: st.color,
+              border: `1px solid ${st.border}`, fontWeight: 700,
+            }}>{st.label} {s.id}</div>
           );
         })}
       </div>
