@@ -481,8 +481,8 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
     attendanceData[m.id]?.[todayKey] === "出勤"
   ).length;
 
-  const CELL_W = 44;
-  const DATE_COL_W = 52;
+  const CELL_W    = 36;
+  const NAME_COL_W = 90;
 
   return (
     <div style={{ padding: "16px 12px" }}>
@@ -516,46 +516,56 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
         })}
       </div>
 
-      {/* Monthly table */}
+      {/* Monthly table: 縦=メンバー 横=日付 */}
       <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }}>
         <table style={{
           borderCollapse: "collapse", fontSize: 11,
-          minWidth: DATE_COL_W + displayedMembers.length * CELL_W,
+          minWidth: NAME_COL_W + days * CELL_W,
         }}>
-          {/* Column headers: member names */}
+          {/* Column headers: dates */}
           <thead>
             <tr>
               <th style={{
                 position: "sticky", left: 0, zIndex: 10,
-                background: "#131520", minWidth: DATE_COL_W,
-                padding: "8px 6px", borderBottom: "1px solid rgba(255,255,255,0.1)",
+                background: "#131520", minWidth: NAME_COL_W,
+                padding: "8px 6px",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
                 borderRight: "1px solid rgba(255,255,255,0.08)",
                 color: "rgba(255,255,255,0.3)", fontSize: 10,
-              }}>日付</th>
-              {displayedMembers.map(mem => {
-                const t = getTeam(mem.teamId);
+              }}>メンバー</th>
+              {allDays.map(day => {
+                const dk   = dateKey(year, month, day);
+                const dow  = new Date(year, month - 1, day).getDay();
+                const isToday = dk === todayKey;
                 return (
-                  <th key={mem.id} style={{
-                    minWidth: CELL_W, maxWidth: CELL_W,
-                    padding: "6px 2px",
+                  <th key={day} style={{
+                    minWidth: CELL_W, width: CELL_W,
+                    padding: "4px 2px",
+                    background: isToday ? "#1e2040" : "#131520",
                     borderBottom: "1px solid rgba(255,255,255,0.1)",
                     borderRight: "1px solid rgba(255,255,255,0.04)",
-                    background: "#131520",
                     textAlign: "center",
                   }}>
                     <div style={{
-                      fontSize: 9, fontWeight: 700,
-                      color: t ? t.accent : "rgba(255,255,255,0.6)",
-                      writingMode: "vertical-rl",
-                      whiteSpace: "nowrap",
-                      margin: "0 auto",
-                      maxHeight: 72, overflow: "hidden",
-                    }}>{mem.name}</div>
-                    {mem.role && (
+                      fontSize: 10, fontWeight: isToday ? 900 : 600,
+                      color: isToday ? "#818cf8"
+                        : dow === 0 ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
+                        : "rgba(255,255,255,0.5)",
+                    }}>{day}</div>
+                    <div style={{
+                      fontSize: 9,
+                      color: isToday ? "#818cf8"
+                        : dow === 0 ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
+                        : "rgba(255,255,255,0.25)",
+                    }}>{DOW[dow]}</div>
+                    {isToday && (
                       <div style={{
-                        fontSize: 8, color: "rgba(139,92,246,0.9)",
-                        marginTop: 2,
-                      }}>{mem.role}</div>
+                        fontSize: 7, color: "#818cf8",
+                        background: "rgba(99,102,241,0.25)",
+                        borderRadius: 2, lineHeight: "14px",
+                      }}>今日</div>
                     )}
                   </th>
                 );
@@ -563,73 +573,63 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
             </tr>
           </thead>
           <tbody>
-            {allDays.map(day => {
-              const dk    = dateKey(year, month, day);
-              const dow   = new Date(year, month - 1, day).getDay();
-              const isWknd   = dow === 0 || dow === 6;
-              const isToday  = dk === todayKey;
-              const rowBg = isToday  ? "rgba(99,102,241,0.14)"
-                          : isWknd   ? "rgba(255,255,255,0.02)"
-                          : "transparent";
-
+            {displayedMembers.map(mem => {
+              const t = getTeam(mem.teamId);
               return (
-                <tr key={dk} style={{ background: rowBg }}>
-                  {/* Date cell */}
+                <tr key={mem.id}>
+                  {/* Member name cell */}
                   <td style={{
                     position: "sticky", left: 0, zIndex: 5,
-                    background: isToday ? "#1e2040"
-                      : isWknd ? "#111320" : "#0d0f18",
-                    padding: "5px 8px",
+                    background: "#0d0f18",
+                    padding: "5px 10px",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     borderRight: "1px solid rgba(255,255,255,0.08)",
                     whiteSpace: "nowrap",
                   }}>
-                    <span style={{
-                      fontSize: 12, fontWeight: isToday ? 900 : 600,
-                      color: isToday ? "#818cf8"
-                        : dow === 0 ? "#f87171"
-                        : dow === 6 ? "#93c5fd"
-                        : "rgba(255,255,255,0.65)",
-                    }}>
-                      {String(month).padStart(2, "0")}/{String(day).padStart(2, "0")}
-                    </span>
-                    <span style={{
-                      marginLeft: 4, fontSize: 9,
-                      color: dow === 0 ? "#f87171"
-                        : dow === 6 ? "#93c5fd"
-                        : "rgba(255,255,255,0.3)",
-                    }}>({DOW[dow]})</span>
-                    {isToday && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {t && (
+                        <span style={{
+                          width: 3, height: 14, borderRadius: 2,
+                          background: t.color, display: "inline-block", flexShrink: 0,
+                        }} />
+                      )}
                       <span style={{
-                        marginLeft: 4, fontSize: 8, color: "#818cf8",
-                        background: "rgba(99,102,241,0.25)",
-                        borderRadius: 3, padding: "0 3px", fontWeight: 800,
-                      }}>今日</span>
-                    )}
+                        fontSize: 12, fontWeight: 600,
+                        color: "rgba(255,255,255,0.8)",
+                      }}>{mem.name}</span>
+                      {mem.role && (
+                        <span style={{
+                          fontSize: 8, padding: "1px 4px", borderRadius: 3,
+                          background: "rgba(139,92,246,0.2)", color: "#a78bfa",
+                        }}>{mem.role}</span>
+                      )}
+                    </div>
                   </td>
-                  {/* Member status cells */}
-                  {displayedMembers.map(mem => {
+                  {/* Status cells */}
+                  {allDays.map(day => {
+                    const dk  = dateKey(year, month, day);
+                    const dow = new Date(year, month - 1, day).getDay();
                     const sid = attendanceData[mem.id]?.[dk] || null;
                     const st  = sid ? getSt(sid) : null;
+                    const isToday = dk === todayKey;
+                    const isWknd  = dow === 0 || dow === 6;
                     return (
-                      <td key={mem.id} style={{
+                      <td key={day} style={{
                         textAlign: "center", padding: "3px 2px",
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                         borderRight: "1px solid rgba(255,255,255,0.04)",
-                        minWidth: CELL_W,
+                        background: isToday ? "rgba(99,102,241,0.08)"
+                          : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
                       }}>
                         {st ? (
                           <div style={{
                             display: "inline-block",
-                            background: st.bg,
-                            border: `1px solid ${st.border}`,
-                            color: st.color,
-                            borderRadius: 4, padding: "2px 4px",
-                            fontSize: 10, fontWeight: 800,
-                            lineHeight: 1.3,
+                            background: st.bg, border: `1px solid ${st.border}`,
+                            color: st.color, borderRadius: 4, padding: "1px 3px",
+                            fontSize: 9, fontWeight: 800, lineHeight: 1.4,
                           }}>{st.label}</div>
                         ) : (
-                          <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 10 }}>-</span>
+                          <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 10 }}>-</span>
                         )}
                       </td>
                     );
