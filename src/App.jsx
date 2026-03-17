@@ -219,34 +219,50 @@ function InputScreen({
   attendanceData, setAttendanceData,
   members, teams, statuses, getTeam, getSt, onBack,
 }) {
-  const [popup, setPopup] = useState(null);
+  const [activeStatus, setActiveStatus] = useState(null); // 選択中カテゴリ（null=消去モード以外）
+  const [eraseMode, setEraseMode] = useState(false);
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
   const member = members.find(m => m.id === selectedMember);
   const myData = selectedMember ? (attendanceData[selectedMember] || {}) : {};
   const team   = member ? getTeam(member.teamId) : null;
 
-  const setStatus = (dk, statusId) => {
-    setAttendanceData(prev => ({
-      ...prev,
-      [selectedMember]: { ...(prev[selectedMember] || {}), [dk]: statusId },
-    }));
-    setPopup(null);
+  const handleCellTap = (dk) => {
+    if (!selectedMember) return;
+    if (eraseMode) {
+      setAttendanceData(prev => {
+        const copy = { ...(prev[selectedMember] || {}) };
+        delete copy[dk];
+        return { ...prev, [selectedMember]: copy };
+      });
+    } else if (activeStatus) {
+      // 同じステータスをタップしたらクリア（トグル）
+      if (myData[dk] === activeStatus) {
+        setAttendanceData(prev => {
+          const copy = { ...(prev[selectedMember] || {}) };
+          delete copy[dk];
+          return { ...prev, [selectedMember]: copy };
+        });
+      } else {
+        setAttendanceData(prev => ({
+          ...prev,
+          [selectedMember]: { ...(prev[selectedMember] || {}), [dk]: activeStatus },
+        }));
+      }
+    }
   };
 
-  const clearStatus = (dk) => {
-    setAttendanceData(prev => {
-      const copy = { ...(prev[selectedMember] || {}) };
-      delete copy[dk];
-      return { ...prev, [selectedMember]: copy };
-    });
-    setPopup(null);
+  const selectStatus = (sid) => {
+    setEraseMode(false);
+    setActiveStatus(prev => prev === sid ? null : sid);
+  };
+
+  const toggleErase = () => {
+    setEraseMode(prev => !prev);
+    setActiveStatus(null);
   };
 
   return (
-    <div
-      style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px" }}
-      onClick={() => setPopup(null)}
-    >
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
         <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
@@ -316,6 +332,47 @@ function InputScreen({
             }}>変更</button>
           </div>
 
+          {/* ── カテゴリ選択パレット ── */}
+          <div style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 12, padding: "10px 12px", marginBottom: 12,
+          }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
+              カテゴリを選んでから日付をタップ
+              {(activeStatus || eraseMode) && (
+                <span style={{ marginLeft: 8, color: eraseMode ? "#f87171" : getSt(activeStatus)?.color }}>
+                  ▶ {eraseMode ? "消去モード" : `「${activeStatus}」を適用中`}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {statuses.map(s => {
+                const sst     = getSt(s.id);
+                const isActive = activeStatus === s.id && !eraseMode;
+                return (
+                  <button key={s.id} onClick={() => selectStatus(s.id)} style={{
+                    background: isActive ? sst.bg : "rgba(255,255,255,0.04)",
+                    border: isActive ? `2px solid ${sst.color}` : "1px solid rgba(255,255,255,0.1)",
+                    color: isActive ? sst.color : "rgba(255,255,255,0.55)",
+                    borderRadius: 8, padding: "6px 12px",
+                    fontSize: 12, fontWeight: isActive ? 800 : 400,
+                    cursor: "pointer", transition: "all 0.1s",
+                    transform: isActive ? "scale(1.05)" : "scale(1)",
+                  }}>{s.id}</button>
+                );
+              })}
+              <button onClick={toggleErase} style={{
+                background: eraseMode ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.04)",
+                border: eraseMode ? "2px solid #f87171" : "1px solid rgba(255,255,255,0.1)",
+                color: eraseMode ? "#f87171" : "rgba(255,255,255,0.4)",
+                borderRadius: 8, padding: "6px 12px",
+                fontSize: 12, fontWeight: eraseMode ? 800 : 400,
+                cursor: "pointer", transition: "all 0.1s",
+              }}>消去</button>
+            </div>
+          </div>
+
           {/* Calendar grid */}
           <div style={{
             background: "rgba(255,255,255,0.03)", borderRadius: 14,
@@ -334,127 +391,67 @@ function InputScreen({
             {/* Cells */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
               {cells.map((day, idx) => {
-                if (!day) return <div key={idx} style={{ minHeight: 72 }} />;
-                const dk       = dateKey(year, month, day);
-                const status   = myData[dk];
-                const st       = status ? getSt(status) : null;
-                const isToday  = dk === todayKey;
-                const dow      = idx % 7;
-                const isWknd   = dow === 0 || dow === 6;
-                const isOpen   = popup === dk;
+                if (!day) return <div key={idx} style={{ minHeight: 64 }} />;
+                const dk      = dateKey(year, month, day);
+                const status  = myData[dk];
+                const st      = status ? getSt(status) : null;
+                const isToday = dk === todayKey;
+                const dow     = idx % 7;
+                const isWknd  = dow === 0 || dow === 6;
+                const canTap  = activeStatus || eraseMode;
 
                 return (
-                  <div key={dk} style={{
-                    position: "relative",
-                    borderRight: "1px solid rgba(255,255,255,0.04)",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  }}>
-                    <div
-                      onClick={e => { e.stopPropagation(); setPopup(isOpen ? null : dk); }}
-                      style={{
-                        minHeight: 72, padding: "6px 6px 4px",
-                        background: isToday ? "rgba(99,102,241,0.12)"
-                          : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
-                        cursor: "pointer",
-                        display: "flex", flexDirection: "column", gap: 4,
-                        transition: "background 0.12s",
-                      }}
-                    >
-                      <div style={{
-                        fontSize: 12, fontWeight: isToday ? 900 : 600,
-                        color: isToday ? "#818cf8"
-                          : dow === 0 ? "#f87171" : dow === 6 ? "#93c5fd"
-                          : "rgba(255,255,255,0.7)",
-                        display: "flex", alignItems: "center", gap: 3,
-                      }}>
-                        {day}
-                        {isToday && (
-                          <span style={{
-                            fontSize: 8, color: "#818cf8",
-                            background: "rgba(99,102,241,0.25)",
-                            borderRadius: 3, padding: "0 4px", fontWeight: 800,
-                          }}>今日</span>
-                        )}
-                      </div>
-                      {st && (
-                        <div style={{
-                          background: st.bg, border: `1px solid ${st.border}`,
-                          color: st.color, borderRadius: 5, padding: "2px 5px",
-                          fontSize: 10, fontWeight: 800, textAlign: "center", lineHeight: 1.3,
-                        }}>{st.label}</div>
-                      )}
-                      {!st && !isWknd && (
-                        <div style={{
-                          fontSize: 9, color: "rgba(255,255,255,0.15)",
-                          textAlign: "center", marginTop: 2,
-                        }}>タップ</div>
+                  <div
+                    key={dk}
+                    onClick={() => canTap && handleCellTap(dk)}
+                    style={{
+                      minHeight: 64, padding: "6px 6px 4px",
+                      borderRight: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      background: isToday ? "rgba(99,102,241,0.12)"
+                        : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
+                      cursor: canTap ? "pointer" : "default",
+                      display: "flex", flexDirection: "column", gap: 4,
+                      transition: "background 0.1s",
+                      userSelect: "none",
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 12, fontWeight: isToday ? 900 : 600,
+                      color: isToday ? "#818cf8"
+                        : dow === 0 ? "#f87171" : dow === 6 ? "#93c5fd"
+                        : "rgba(255,255,255,0.7)",
+                      display: "flex", alignItems: "center", gap: 3,
+                    }}>
+                      {day}
+                      {isToday && (
+                        <span style={{
+                          fontSize: 8, color: "#818cf8",
+                          background: "rgba(99,102,241,0.25)",
+                          borderRadius: 3, padding: "0 4px", fontWeight: 800,
+                        }}>今日</span>
                       )}
                     </div>
-
-                    {/* Status popup */}
-                    {isOpen && (
-                      <div
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                          position: "absolute",
-                          left:  idx % 7 >= 5 ? "auto" : 0,
-                          right: idx % 7 >= 5 ? 0 : "auto",
-                          top: "100%",
-                          background: "#1a1d2e",
-                          border: "1px solid rgba(255,255,255,0.15)",
-                          borderRadius: 11, padding: 6, zIndex: 500,
-                          display: "grid", gridTemplateColumns: "1fr 1fr",
-                          gap: 3, minWidth: 190,
-                          boxShadow: "0 10px 40px rgba(0,0,0,0.7)",
-                        }}
-                      >
-                        {statuses.map(s => {
-                          const sst = getSt(s.id);
-                          return (
-                            <button key={s.id} onClick={() => setStatus(dk, s.id)} style={{
-                              background: status === s.id ? sst.bg : "transparent",
-                              border: status === s.id
-                                ? `1px solid ${sst.border}` : "1px solid transparent",
-                              color: status === s.id ? sst.color : "rgba(255,255,255,0.6)",
-                              borderRadius: 7, padding: "6px 8px", fontSize: 11,
-                              cursor: "pointer",
-                              fontWeight: status === s.id ? 800 : 400,
-                              textAlign: "left", transition: "all 0.1s",
-                            }}>{s.id}</button>
-                          );
-                        })}
-                        {status && (
-                          <button onClick={() => clearStatus(dk)} style={{
-                            gridColumn: "1/-1",
-                            background: "rgba(239,68,68,0.12)",
-                            border: "1px solid rgba(239,68,68,0.25)",
-                            color: "#f87171", borderRadius: 7, padding: "5px 8px",
-                            fontSize: 10, cursor: "pointer", marginTop: 2,
-                          }}>クリア</button>
-                        )}
-                      </div>
+                    {st && (
+                      <div style={{
+                        background: st.bg, border: `1px solid ${st.border}`,
+                        color: st.color, borderRadius: 5, padding: "2px 5px",
+                        fontSize: 10, fontWeight: 800, textAlign: "center", lineHeight: 1.3,
+                      }}>{st.label}</div>
+                    )}
+                    {!st && canTap && !isWknd && (
+                      <div style={{
+                        fontSize: 9, color: "rgba(255,255,255,0.15)",
+                        textAlign: "center", marginTop: 2,
+                      }}>+</div>
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* Legend */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-            {statuses.map(s => {
-              const sst = getSt(s.id);
-              return (
-                <div key={s.id} style={{
-                  fontSize: 10, padding: "2px 8px", borderRadius: 5,
-                  background: sst.bg, color: sst.color,
-                  border: `1px solid ${sst.border}`, fontWeight: 700,
-                }}>{sst.label}</div>
-              );
-            })}
-          </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 8 }}>
-            ※ 過去〜今日のマスをタップしてステータスを設定できます
+            ※ カテゴリを選択してから日付をタップ。同じカテゴリをタップするとクリア
           </div>
         </>
       )}
