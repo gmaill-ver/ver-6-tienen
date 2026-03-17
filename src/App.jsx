@@ -948,6 +948,7 @@ function SettingRow({ icon, title, sub, onClick }) {
 // ── Members Settings ──────────────────────────────────────────────
 function MembersSettings({ teams, members, saveMembers, onBack }) {
   const [form, setForm] = useState(null);
+  const [sortMode, setSortMode] = useState(false);
 
   const openAdd  = () => setForm({ name: "", teamId: teams[0]?.id || "", role: "" });
   const openEdit = (m) => setForm({ ...m });
@@ -989,11 +990,19 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
           <button onClick={onBack} style={backBtnStyle}>↩︎</button>
           <div style={{ fontSize: 15, fontWeight: 800 }}>メンバー管理</div>
         </div>
-        <button onClick={openAdd} style={{
-          background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
-          color: "#818cf8", borderRadius: 8, padding: "7px 14px",
-          fontSize: 12, cursor: "pointer", fontWeight: 700,
-        }}>+ 追加</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setSortMode(s => !s)} style={{
+            background: sortMode ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.05)",
+            border: sortMode ? "1px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.1)",
+            color: sortMode ? "#fbbf24" : "rgba(255,255,255,0.4)",
+            borderRadius: 8, padding: "7px 10px", fontSize: 14, cursor: "pointer",
+          }}>⇅</button>
+          <button onClick={openAdd} style={{
+            background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
+            color: "#818cf8", borderRadius: 8, padding: "7px 14px",
+            fontSize: 12, cursor: "pointer", fontWeight: 700,
+          }}>+ 追加</button>
+        </div>
       </div>
 
       {/* Form */}
@@ -1077,16 +1086,18 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
                   borderRadius: 8, padding: "8px 12px",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <button onClick={() => moveInTeam(m, -1)} disabled={ti === 0} style={{
-                        background: "none", border: "none", color: ti === 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
-                        fontSize: 10, cursor: ti === 0 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
-                      }}>▲</button>
-                      <button onClick={() => moveInTeam(m, 1)} disabled={ti === tm.length - 1} style={{
-                        background: "none", border: "none", color: ti === tm.length - 1 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
-                        fontSize: 10, cursor: ti === tm.length - 1 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
-                      }}>▼</button>
-                    </div>
+                    {sortMode && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <button onClick={() => moveInTeam(m, -1)} disabled={ti === 0} style={{
+                          background: "none", border: "none", color: ti === 0 ? "rgba(255,255,255,0.1)" : "#fbbf24",
+                          fontSize: 10, cursor: ti === 0 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
+                        }}>▲</button>
+                        <button onClick={() => moveInTeam(m, 1)} disabled={ti === tm.length - 1} style={{
+                          background: "none", border: "none", color: ti === tm.length - 1 ? "rgba(255,255,255,0.1)" : "#fbbf24",
+                          fontSize: 10, cursor: ti === tm.length - 1 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
+                        }}>▼</button>
+                      </div>
+                    )}
                     <span style={{ fontSize: 13 }}>{m.name}</span>
                     {m.role && (
                       <span style={{
