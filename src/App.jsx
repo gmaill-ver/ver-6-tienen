@@ -56,36 +56,7 @@ const DEFAULT_STATUSES = [
   { id: "明け",    label: "明",    color: "#f472b6" },
 ];
 
-const DEFAULT_MEMBERS = [
-  { id: 1,  name: "田中 一郎",   teamId: "t1", role: "班長" },
-  { id: 2,  name: "佐藤 花子",   teamId: "t1", role: "" },
-  { id: 3,  name: "鈴木 次郎",   teamId: "t1", role: "" },
-  { id: 4,  name: "高橋 美咲",   teamId: "t1", role: "" },
-  { id: 5,  name: "伊藤 健太",   teamId: "t1", role: "" },
-  { id: 6,  name: "渡辺 麻衣",   teamId: "t1", role: "" },
-  { id: 7,  name: "山本 大輔",   teamId: "t1", role: "" },
-  { id: 8,  name: "中川 裕子",   teamId: "t1", role: "" },
-  { id: 9,  name: "中村 直樹",   teamId: "t2", role: "班長" },
-  { id: 10, name: "小林 由美",   teamId: "t2", role: "" },
-  { id: 11, name: "加藤 浩二",   teamId: "t2", role: "" },
-  { id: 12, name: "吉田 恵子",   teamId: "t2", role: "" },
-  { id: 13, name: "山田 翔太",   teamId: "t2", role: "" },
-  { id: 14, name: "松本 千夏",   teamId: "t2", role: "" },
-  { id: 15, name: "井上 雄介",   teamId: "t2", role: "" },
-  { id: 16, name: "木村 奈々",   teamId: "t2", role: "" },
-  { id: 17, name: "林 勇気",     teamId: "t2", role: "" },
-  { id: 18, name: "清水 彩花",   teamId: "t2", role: "" },
-  { id: 19, name: "山口 誠",     teamId: "t3", role: "班長" },
-  { id: 20, name: "斎藤 みゆき", teamId: "t3", role: "" },
-  { id: 21, name: "松田 康平",   teamId: "t3", role: "" },
-  { id: 22, name: "岡田 里奈",   teamId: "t3", role: "" },
-  { id: 23, name: "藤田 悠斗",   teamId: "t3", role: "" },
-  { id: 24, name: "橋本 茜",     teamId: "t3", role: "" },
-  { id: 25, name: "石川 博",     teamId: "t3", role: "" },
-  { id: 26, name: "前田 沙織",   teamId: "t3", role: "" },
-  { id: 27, name: "後藤 竜也",   teamId: "t4", role: "所長" },
-  { id: 28, name: "坂本 瑠衣",   teamId: "t4", role: "" },
-];
+const DEFAULT_MEMBERS = [];
 
 const COLOR_PALETTE = [
   "#22c55e", "#60a5fa", "#c084fc", "#fb923c", "#fdba74",
