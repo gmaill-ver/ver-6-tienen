@@ -125,10 +125,28 @@ function MainApp({ user }) {
   };
   const goToday = () => { setViewYear(NOW.getFullYear()); setViewMonth(NOW.getMonth() + 1); };
 
-  // Firestore リアルタイム同期
+  // Firestore リアルタイム同期（初回はlocalStorageからマイグレーション）
   useEffect(() => {
     let loadedCount = 0;
     const markLoaded = () => { if (++loadedCount >= 3) setLoading(false); };
+
+    // localStorageデータをFirestoreへ一度だけ移行
+    if (!localStorage.getItem("ls_migrated")) {
+      const lsTeams      = LS.get("teams",        null);
+      const lsStatuses   = LS.get("statuses",     null);
+      const lsMembers    = LS.get("members",      null);
+      const lsAttendance = LS.get("attendanceData", null);
+      const writes = [];
+      if (lsTeams)    writes.push(setDoc(doc(db, "appConfig", "teams"),    { list: lsTeams }));
+      if (lsStatuses) writes.push(setDoc(doc(db, "appConfig", "statuses"), { list: lsStatuses }));
+      if (lsMembers)  writes.push(setDoc(doc(db, "appConfig", "members"),  { list: lsMembers }));
+      if (lsAttendance) {
+        for (const [mid, records] of Object.entries(lsAttendance)) {
+          writes.push(setDoc(doc(db, "attendance", String(mid)), records));
+        }
+      }
+      Promise.all(writes).then(() => localStorage.setItem("ls_migrated", "1"));
+    }
 
     const unsubTeams = onSnapshot(doc(db, "appConfig", "teams"), snap => {
       if (snap.exists()) setTeams(snap.data().list);
