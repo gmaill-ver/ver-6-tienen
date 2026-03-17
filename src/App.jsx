@@ -589,12 +589,14 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
   const days = new Date(year, month, 0).getDate();
   const allDays = Array.from({ length: days }, (_, i) => i + 1);
 
-  const displayedMembers = useMemo(() =>
-    filterTeam === "ALL"
+  const displayedMembers = useMemo(() => {
+    const filtered = filterTeam === "ALL"
       ? members
-      : members.filter(m => m.teamId === filterTeam),
-    [members, filterTeam]
-  );
+      : members.filter(m => m.teamId === filterTeam);
+    if (filterTeam !== "ALL") return filtered;
+    const teamOrder = Object.fromEntries(teams.map((t, i) => [t.id, i]));
+    return [...filtered].sort((a, b) => (teamOrder[a.teamId] ?? 99) - (teamOrder[b.teamId] ?? 99));
+  }, [members, filterTeam, teams]);
 
   // 表示対象メンバー（フィルタ適用）
   const targetMembers = filterTeam === "ALL"
@@ -951,6 +953,18 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
   const openEdit = (m) => setForm({ ...m });
   const close    = () => setForm(null);
 
+  const moveInTeam = (m, dir) => {
+    const sameTeam = members.filter(x => x.teamId === m.teamId);
+    const ti = sameTeam.findIndex(x => x.id === m.id);
+    const swapWith = sameTeam[ti + dir];
+    if (!swapWith) return;
+    const ai = members.findIndex(x => x.id === m.id);
+    const bi = members.findIndex(x => x.id === swapWith.id);
+    const next = [...members];
+    [next[ai], next[bi]] = [next[bi], next[ai]];
+    saveMembers(next);
+  };
+
   const save = () => {
     if (!form.name.trim()) return;
     if (form.id) {
@@ -1055,7 +1069,7 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
               borderLeft: `3px solid ${t.color}`, paddingLeft: 8,
             }}>{t.name}（{tm.length}人）</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {tm.map(m => (
+              {tm.map((m, ti) => (
                 <div key={m.id} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   background: "rgba(255,255,255,0.03)",
@@ -1063,6 +1077,16 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
                   borderRadius: 8, padding: "8px 12px",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <button onClick={() => moveInTeam(m, -1)} disabled={ti === 0} style={{
+                        background: "none", border: "none", color: ti === 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
+                        fontSize: 10, cursor: ti === 0 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
+                      }}>▲</button>
+                      <button onClick={() => moveInTeam(m, 1)} disabled={ti === tm.length - 1} style={{
+                        background: "none", border: "none", color: ti === tm.length - 1 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
+                        fontSize: 10, cursor: ti === tm.length - 1 ? "default" : "pointer", padding: "0 2px", lineHeight: 1,
+                      }}>▼</button>
+                    </div>
                     <span style={{ fontSize: 13 }}>{m.name}</span>
                     {m.role && (
                       <span style={{
