@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import AuthScreen from "./AuthScreen";
 
@@ -134,10 +134,11 @@ export default function App() {
 function MainApp({ user }) {
   const [screen, setScreen] = useState("home");
   const [selectedMember, setSelectedMember] = useState(null);
-  const [teams]    = useState(() => LS.get("teams", DEFAULT_TEAMS));
-  const [statuses, setStatuses] = useState(() => LS.get("statuses", DEFAULT_STATUSES));
-  const [members,  setMembers]  = useState(() => LS.get("members",  DEFAULT_MEMBERS));
-  const [attendanceData, setAttendanceData] = useState(() => LS.get("attendanceData", {}));
+  const [loading, setLoading] = useState(true);
+  const [teams,    setTeams]    = useState(DEFAULT_TEAMS);
+  const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
+  const [members,  setMembers]  = useState(DEFAULT_MEMBERS);
+  const [attendanceData, setAttendanceData] = useState({});
 
   // 月ナビゲーション
   const [viewYear,  setViewYear]  = useState(NOW.getFullYear());
@@ -153,9 +154,56 @@ function MainApp({ user }) {
   };
   const goToday = () => { setViewYear(NOW.getFullYear()); setViewMonth(NOW.getMonth() + 1); };
 
-  useEffect(() => { LS.set("statuses",       statuses);       }, [statuses]);
-  useEffect(() => { LS.set("members",        members);        }, [members]);
-  useEffect(() => { LS.set("attendanceData", attendanceData); }, [attendanceData]);
+  // Firestore リアルタイム同期
+  useEffect(() => {
+    let loadedCount = 0;
+    const markLoaded = () => { if (++loadedCount >= 3) setLoading(false); };
+
+    const unsubTeams = onSnapshot(doc(db, "appConfig", "teams"), snap => {
+      if (snap.exists()) setTeams(snap.data().list);
+      else setDoc(doc(db, "appConfig", "teams"), { list: DEFAULT_TEAMS });
+      markLoaded();
+    });
+    const unsubStatuses = onSnapshot(doc(db, "appConfig", "statuses"), snap => {
+      if (snap.exists()) setStatuses(snap.data().list);
+      else setDoc(doc(db, "appConfig", "statuses"), { list: DEFAULT_STATUSES });
+      markLoaded();
+    });
+    const unsubMembers = onSnapshot(doc(db, "appConfig", "members"), snap => {
+      if (snap.exists()) setMembers(snap.data().list);
+      else setDoc(doc(db, "appConfig", "members"), { list: DEFAULT_MEMBERS });
+      markLoaded();
+    });
+    const unsubAttendance = onSnapshot(collection(db, "attendance"), snap => {
+      const data = {};
+      snap.forEach(d => { data[d.id] = d.data(); });
+      setAttendanceData(data);
+    });
+
+    return () => { unsubTeams(); unsubStatuses(); unsubMembers(); unsubAttendance(); };
+  }, []);
+
+  // Firestore 書き込み関数
+  const saveMembers  = (list) => setDoc(doc(db, "appConfig", "members"),  { list });
+  const saveStatuses = (list) => setDoc(doc(db, "appConfig", "statuses"), { list });
+  const updateAttendance = (memberId, dk, statusId) => {
+    // 楽観的ローカル更新
+    setAttendanceData(prev => {
+      const copy = { ...(prev[String(memberId)] || {}) };
+      if (statusId === null) delete copy[dk];
+      else copy[dk] = statusId;
+      return { ...prev, [String(memberId)]: copy };
+    });
+    // Firestore書き込み
+    const ref = doc(db, "attendance", String(memberId));
+    if (statusId === null) {
+      updateDoc(ref, { [dk]: deleteField() }).catch(() =>
+        setDoc(ref, {}, { merge: true })
+      );
+    } else {
+      setDoc(ref, { [dk]: statusId }, { merge: true });
+    }
+  };
 
   const getTeam = (id) => teams.find(t => t.id === id);
   const getSt   = (id) => {
@@ -164,9 +212,17 @@ function MainApp({ user }) {
     return { ...s, bg: hexToRgba(s.color, 0.2), border: hexToRgba(s.color, 0.45) };
   };
 
+  if (loading) return (
+    <div style={{
+      minHeight: "100vh", background: "#0d0f18",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Hiragino Kaku Gothic ProN',sans-serif", color: "#e2e8f0",
+    }}>読み込み中...</div>
+  );
+
   const isAdmin = user.email === import.meta.env.VITE_ADMIN_EMAIL;
   const nav     = { viewYear, viewMonth, goPrev, goNext, goToday };
-  const ctx     = { teams, statuses, members, attendanceData, setAttendanceData, getTeam, getSt, ...nav };
+  const ctx     = { teams, statuses, members, attendanceData, updateAttendance, getTeam, getSt, ...nav };
 
   return (
     <div style={{
@@ -197,8 +253,8 @@ function MainApp({ user }) {
       {screen === "settings" && (
         <SettingsScreen
           teams={teams}
-          statuses={statuses} setStatuses={setStatuses}
-          members={members}   setMembers={setMembers}
+          statuses={statuses} saveStatuses={saveStatuses}
+          members={members}   saveMembers={saveMembers}
           getTeam={getTeam}   getSt={getSt}
           isAdmin={isAdmin}
           onBack={() => setScreen("home")}
@@ -301,7 +357,7 @@ function MonthNav({ viewYear, viewMonth, goPrev, goNext, goToday }) {
 function InputScreen({
   viewYear, viewMonth, goPrev, goNext, goToday,
   selectedMember, setSelectedMember,
-  attendanceData, setAttendanceData,
+  attendanceData, updateAttendance,
   members, teams, statuses, getTeam, getSt, onBack,
 }) {
   const year = viewYear; const month = viewMonth;
@@ -309,31 +365,16 @@ function InputScreen({
   const [eraseMode, setEraseMode] = useState(false);
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
   const member = members.find(m => m.id === selectedMember);
-  const myData = selectedMember ? (attendanceData[selectedMember] || {}) : {};
+  const myData = selectedMember ? (attendanceData[String(selectedMember)] || {}) : {};
   const team   = member ? getTeam(member.teamId) : null;
 
   const handleCellTap = (dk) => {
     if (!selectedMember) return;
     if (eraseMode) {
-      setAttendanceData(prev => {
-        const copy = { ...(prev[selectedMember] || {}) };
-        delete copy[dk];
-        return { ...prev, [selectedMember]: copy };
-      });
+      updateAttendance(selectedMember, dk, null);
     } else if (activeStatus) {
       // 同じステータスをタップしたらクリア（トグル）
-      if (myData[dk] === activeStatus) {
-        setAttendanceData(prev => {
-          const copy = { ...(prev[selectedMember] || {}) };
-          delete copy[dk];
-          return { ...prev, [selectedMember]: copy };
-        });
-      } else {
-        setAttendanceData(prev => ({
-          ...prev,
-          [selectedMember]: { ...(prev[selectedMember] || {}), [dk]: activeStatus },
-        }));
-      }
+      updateAttendance(selectedMember, dk, myData[dk] === activeStatus ? null : activeStatus);
     }
   };
 
@@ -566,7 +607,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
     : members.filter(m => m.teamId === filterTeam);
 
   const presentCount = targetMembers.filter(m =>
-    attendanceData[m.id]?.[selectedDate] === "出勤"
+    attendanceData[String(m.id)]?.[selectedDate] === "出勤"
   ).length;
   const targetLabel = filterTeam === "ALL"
     ? "全体"
@@ -709,7 +750,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                   {allDays.map(day => {
                     const dk  = dateKey(year, month, day);
                     const dow = new Date(year, month - 1, day).getDay();
-                    const sid = attendanceData[mem.id]?.[dk] || null;
+                    const sid = attendanceData[String(mem.id)]?.[dk] || null;
                     const st  = sid ? getSt(sid) : null;
                     const isToday = dk === todayKey;
                     const isSelected = dk === selectedDate;
@@ -756,13 +797,13 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
 }
 
 // ── Settings Screen ───────────────────────────────────────────────
-function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, getTeam, getSt, isAdmin, onBack }) {
+function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, getTeam, getSt, isAdmin, onBack }) {
   const [section, setSection] = useState(null);
 
   if (section === "members") {
     return (
       <MembersSettings
-        teams={teams} members={members} setMembers={setMembers}
+        teams={teams} members={members} saveMembers={saveMembers}
         getTeam={getTeam} onBack={() => setSection(null)}
       />
     );
@@ -770,7 +811,7 @@ function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, get
   if (section === "statuses") {
     return (
       <StatusesSettings
-        statuses={statuses} setStatuses={setStatuses}
+        statuses={statuses} saveStatuses={saveStatuses}
         getSt={getSt} onBack={() => setSection(null)}
       />
     );
@@ -908,7 +949,7 @@ function SettingRow({ icon, title, sub, onClick }) {
 }
 
 // ── Members Settings ──────────────────────────────────────────────
-function MembersSettings({ teams, members, setMembers, onBack }) {
+function MembersSettings({ teams, members, saveMembers, onBack }) {
   const [form, setForm] = useState(null);
 
   const openAdd  = () => setForm({ name: "", teamId: teams[0]?.id || "", role: "" });
@@ -918,17 +959,17 @@ function MembersSettings({ teams, members, setMembers, onBack }) {
   const save = () => {
     if (!form.name.trim()) return;
     if (form.id) {
-      setMembers(prev => prev.map(m => m.id === form.id ? { ...form, name: form.name.trim() } : m));
+      saveMembers(members.map(m => m.id === form.id ? { ...form, name: form.name.trim() } : m));
     } else {
       const newId = Math.max(0, ...members.map(m => m.id)) + 1;
-      setMembers(prev => [...prev, { id: newId, name: form.name.trim(), teamId: form.teamId, role: form.role }]);
+      saveMembers([...members, { id: newId, name: form.name.trim(), teamId: form.teamId, role: form.role }]);
     }
     close();
   };
 
   const remove = (id) => {
     if (window.confirm("このメンバーを削除しますか？")) {
-      setMembers(prev => prev.filter(m => m.id !== id));
+      saveMembers(members.filter(m => m.id !== id));
     }
   };
 
@@ -1060,7 +1101,7 @@ function MembersSettings({ teams, members, setMembers, onBack }) {
 }
 
 // ── Statuses Settings ─────────────────────────────────────────────
-function StatusesSettings({ statuses, setStatuses, getSt, onBack }) {
+function StatusesSettings({ statuses, saveStatuses, getSt, onBack }) {
   const [form, setForm] = useState(null);
 
   const openAdd  = () => setForm({ id: "", label: "", color: COLOR_PALETTE[0], _editing: false });
@@ -1073,7 +1114,7 @@ function StatusesSettings({ statuses, setStatuses, getSt, onBack }) {
     if (!name || !lbl) return;
 
     if (form._editing) {
-      setStatuses(prev => prev.map(s =>
+      saveStatuses(statuses.map(s =>
         s.id === form._origId ? { id: name, label: lbl, color: form.color } : s
       ));
     } else {
@@ -1081,14 +1122,14 @@ function StatusesSettings({ statuses, setStatuses, getSt, onBack }) {
         alert("同じ名前のステータスが既に存在します");
         return;
       }
-      setStatuses(prev => [...prev, { id: name, label: lbl, color: form.color }]);
+      saveStatuses([...statuses, { id: name, label: lbl, color: form.color }]);
     }
     close();
   };
 
   const remove = (id) => {
     if (window.confirm(`「${id}」を削除しますか？`)) {
-      setStatuses(prev => prev.filter(s => s.id !== id));
+      saveStatuses(statuses.filter(s => s.id !== id));
     }
   };
 
