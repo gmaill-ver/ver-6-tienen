@@ -392,7 +392,7 @@ function InputScreen({
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+          <button onClick={onBack} style={backBtnStyle}>↩︎</button>
           <div style={{ fontSize: 15, fontWeight: 800 }}>勤務入力</div>
         </div>
         <MonthNav viewYear={viewYear} viewMonth={viewMonth} goPrev={goPrev} goNext={goNext} goToday={goToday} />
@@ -618,7 +618,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+          <button onClick={onBack} style={backBtnStyle}>↩︎</button>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
@@ -818,7 +818,7 @@ function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, g
   return (
     <div style={{ maxWidth: 500, margin: "0 auto", padding: "16px 12px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+        <button onClick={onBack} style={backBtnStyle}>↩︎</button>
         <div style={{ fontSize: 15, fontWeight: 800 }}>設定</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -865,7 +865,7 @@ function WhitelistSettings({ onBack }) {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 12px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+        <button onClick={onBack} style={backBtnStyle}>↩︎</button>
         <div style={{ fontSize: 15, fontWeight: 800 }}>承認メール管理</div>
       </div>
 
@@ -972,7 +972,7 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "16px 12px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+          <button onClick={onBack} style={backBtnStyle}>↩︎</button>
           <div style={{ fontSize: 15, fontWeight: 800 }}>メンバー管理</div>
         </div>
         <button onClick={openAdd} style={{
@@ -1132,7 +1132,7 @@ function StatusesSettings({ statuses, saveStatuses, getSt, onBack }) {
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "16px 12px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+          <button onClick={onBack} style={backBtnStyle}>↩︎</button>
           <div style={{ fontSize: 15, fontWeight: 800 }}>ステータス管理</div>
         </div>
         <button onClick={openAdd} style={{
