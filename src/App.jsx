@@ -242,12 +242,22 @@ function HomeScreen({ onInput, onBoard, onSettings, user, viewYear, viewMonth })
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", minHeight: "100vh", gap: 32, padding: 24,
     }}>
-      {/* ユーザー情報 + ログアウト */}
+      {/* 右上: 設定⚙️ + ログアウト */}
       <div style={{
         position: "fixed", top: 16, right: 16,
         display: "flex", alignItems: "center", gap: 8,
       }}>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{user.email}</span>
+        <button
+          onClick={onSettings}
+          title="設定"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.5)", borderRadius: 6,
+            padding: "4px 8px", fontSize: 16, cursor: "pointer", lineHeight: 1,
+          }}
+        >⚙️</button>
         <button
           onClick={() => signOut(auth)}
           style={{
@@ -269,7 +279,6 @@ function HomeScreen({ onInput, onBoard, onSettings, user, viewYear, viewMonth })
       <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", maxWidth: 320 }}>
         <BigButton label="自分の勤務を入力する" sub="カレンダーに月間の勤務を登録" color="#6366f1" onClick={onInput} />
         <BigButton label="全体ボードを見る"     sub="月間の班ごと出勤状況を確認"   color="#059669" onClick={onBoard} />
-        <BigButton label="設定"                sub="メンバー・ステータスの管理"   color="#64748b" onClick={onSettings} />
       </div>
     </div>
   );
