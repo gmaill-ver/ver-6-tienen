@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import AuthScreen from "./AuthScreen";
 
