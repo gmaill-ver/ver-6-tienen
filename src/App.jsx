@@ -519,9 +519,8 @@ function InputScreen({
                     </div>
                     {st && (
                       <div style={{
-                        background: st.bg, border: `1px solid ${st.border}`,
-                        color: st.color, borderRadius: 5, padding: "2px 5px",
-                        fontSize: 10, fontWeight: 800, textAlign: "center", lineHeight: 1.3,
+                        color: st.color, fontSize: 11, fontWeight: 800,
+                        textAlign: "center", lineHeight: 1.3,
                       }}>{st.label}</div>
                     )}
                     {!st && canTap && !isWknd && (
@@ -708,12 +707,9 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
                       }}>
                         {st ? (
-                          <div style={{
-                            display: "inline-block",
-                            background: st.bg, border: `1px solid ${st.border}`,
-                            color: st.color, borderRadius: 4, padding: "1px 3px",
-                            fontSize: 9, fontWeight: 800, lineHeight: 1.4,
-                          }}>{st.label}</div>
+                          <span style={{
+                            color: st.color, fontSize: 10, fontWeight: 800,
+                          }}>{st.label}</span>
                         ) : (
                           <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 10 }}>-</span>
                         )}
@@ -733,9 +729,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           const st = getSt(s.id);
           return (
             <div key={s.id} style={{
-              fontSize: 10, padding: "2px 8px", borderRadius: 5,
-              background: st.bg, color: st.color,
-              border: `1px solid ${st.border}`, fontWeight: 700,
+              fontSize: 11, color: st.color, fontWeight: 700,
             }}>{st.label} {s.id}</div>
           );
         })}
@@ -1183,9 +1177,8 @@ function StatusesSettings({ statuses, setStatuses, getSt, onBack }) {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
-                  background: st.bg, border: `1px solid ${st.border}`,
-                  color: st.color, borderRadius: 5, padding: "3px 10px",
-                  fontSize: 12, fontWeight: 800, minWidth: 36, textAlign: "center",
+                  color: st.color, fontSize: 13, fontWeight: 800,
+                  minWidth: 24, textAlign: "center",
                 }}>{st.label}</div>
                 <span style={{ fontSize: 13 }}>{s.id}</span>
               </div>
