@@ -400,9 +400,6 @@ function InputScreen({
       {!selectedMember ? (
         /* Member select */
         <>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>
-            あなたの名前を選んでください
-          </div>
           {teams.map(t => {
             const tm = members.filter(m => m.teamId === t.id);
             if (!tm.length) return null;
@@ -464,7 +461,6 @@ function InputScreen({
             borderRadius: 12, padding: "10px 12px", marginBottom: 12,
           }}>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
-              カテゴリを選んでから日付をタップ
               {(activeStatus || eraseMode) && (
                 <span style={{ marginLeft: 8, color: eraseMode ? "#f87171" : getSt(activeStatus)?.color }}>
                   ▶ {eraseMode ? "消去モード" : `「${activeStatus}」を適用中`}
