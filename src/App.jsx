@@ -558,10 +558,17 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
     [members, filterTeam]
   );
 
-  // 今日の出勤人数
-  const presentToday = members.filter(m =>
+  // 表示対象メンバー（フィルタ適用）
+  const targetMembers = filterTeam === "ALL"
+    ? members
+    : members.filter(m => m.teamId === filterTeam);
+
+  const presentToday = targetMembers.filter(m =>
     attendanceData[m.id]?.[todayKey] === "出勤"
   ).length;
+  const targetLabel = filterTeam === "ALL"
+    ? "全体"
+    : (teams.find(t => t.id === filterTeam)?.name ?? "");
 
   const CELL_W    = 36;
   const NAME_COL_W = 90;
@@ -575,7 +582,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           <div>
             <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-              今日の出勤 {presentToday}/{members.length}人
+              {targetLabel} 出勤 {presentToday}/{targetMembers.length}人
             </div>
           </div>
         </div>
