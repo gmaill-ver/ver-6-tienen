@@ -547,6 +547,7 @@ function InputScreen({
 function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, members, teams, statuses, getTeam, getSt, onBack }) {
   const year = viewYear; const month = viewMonth;
   const [filterTeam, setFilterTeam] = useState("ALL");
+  const [selectedDate, setSelectedDate] = useState(todayKey);
 
   const days = new Date(year, month, 0).getDate();
   const allDays = Array.from({ length: days }, (_, i) => i + 1);
@@ -563,12 +564,14 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
     ? members
     : members.filter(m => m.teamId === filterTeam);
 
-  const presentToday = targetMembers.filter(m =>
-    attendanceData[m.id]?.[todayKey] === "出勤"
+  const presentCount = targetMembers.filter(m =>
+    attendanceData[m.id]?.[selectedDate] === "出勤"
   ).length;
   const targetLabel = filterTeam === "ALL"
     ? "全体"
     : (teams.find(t => t.id === filterTeam)?.name ?? "");
+  const selectedDay = selectedDate.slice(8).replace(/^0/, "");
+  const selectedDateLabel = selectedDate === todayKey ? `今日(${selectedDay}日)` : `${selectedDay}日`;
 
   const CELL_W    = 36;
   const NAME_COL_W = 90;
@@ -582,7 +585,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           <div>
             <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-              {targetLabel} 出勤 {presentToday}/{targetMembers.length}人
+              {targetLabel} {selectedDateLabel} 出勤 {presentCount}/{targetMembers.length}人
             </div>
           </div>
         </div>
@@ -629,25 +632,29 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                 const dk   = dateKey(year, month, day);
                 const dow  = new Date(year, month - 1, day).getDay();
                 const isToday = dk === todayKey;
+                const isSelected = dk === selectedDate;
                 return (
-                  <th key={day} style={{
+                  <th key={day} onClick={() => setSelectedDate(dk)} style={{
                     minWidth: CELL_W, width: CELL_W,
                     padding: "4px 2px",
-                    background: isToday ? "#1e2040" : "#131520",
-                    borderBottom: "1px solid rgba(255,255,255,0.1)",
+                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : "#131520",
+                    borderBottom: isSelected ? "2px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
                     borderRight: "1px solid rgba(255,255,255,0.04)",
                     textAlign: "center",
+                    cursor: "pointer",
                   }}>
                     <div style={{
-                      fontSize: 10, fontWeight: isToday ? 900 : 600,
-                      color: isToday ? "#818cf8"
+                      fontSize: 10, fontWeight: isSelected || isToday ? 900 : 600,
+                      color: isSelected ? "#c4b5fd"
+                        : isToday ? "#818cf8"
                         : dow === 0 ? "#f87171"
                         : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.5)",
                     }}>{day}</div>
                     <div style={{
                       fontSize: 9,
-                      color: isToday ? "#818cf8"
+                      color: isSelected ? "#c4b5fd"
+                        : isToday ? "#818cf8"
                         : dow === 0 ? "#f87171"
                         : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.25)",
@@ -704,13 +711,15 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                     const sid = attendanceData[mem.id]?.[dk] || null;
                     const st  = sid ? getSt(sid) : null;
                     const isToday = dk === todayKey;
+                    const isSelected = dk === selectedDate;
                     const isWknd  = dow === 0 || dow === 6;
                     return (
                       <td key={day} style={{
                         textAlign: "center", padding: "3px 2px",
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                         borderRight: "1px solid rgba(255,255,255,0.04)",
-                        background: isToday ? "rgba(99,102,241,0.08)"
+                        background: isSelected ? "rgba(99,80,200,0.15)"
+                          : isToday ? "rgba(99,102,241,0.08)"
                           : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
                       }}>
                         {st ? (
