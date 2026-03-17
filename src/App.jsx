@@ -1027,7 +1027,7 @@ function MembersSettings({ teams, members, saveMembers, onBack }) {
                 style={inputStyle}
                 value={form.role}
                 onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                placeholder="例: 班長、所長"
+                placeholder="例: 班長"
               />
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
