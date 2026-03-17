@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -28,15 +29,7 @@ export default function AuthScreen() {
     try {
       const trimmedEmail = email.trim().toLowerCase();
 
-      // ホワイトリスト確認
-      const snap = await getDoc(doc(db, "allowedEmails", trimmedEmail));
-      if (!snap.exists()) {
-        setError("このメールアドレスは承認されていません。管理者に連絡してください。");
-        setLoading(false);
-        return;
-      }
-
-      // サインイン試行（初回は新規登録）
+      // 1. まずFirebase Authでサインイン（初回は新規登録）
       try {
         await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } catch (err) {
@@ -44,11 +37,18 @@ export default function AuthScreen() {
           err.code === "auth/user-not-found" ||
           err.code === "auth/invalid-credential"
         ) {
-          // 初回ログイン → アカウント作成
           await createUserWithEmailAndPassword(auth, trimmedEmail, password);
         } else {
           throw err;
         }
+      }
+
+      // 2. ログイン後にホワイトリスト確認（認証済みで読める）
+      const snap = await getDoc(doc(db, "allowedEmails", trimmedEmail));
+      if (!snap.exists()) {
+        await signOut(auth);
+        setError("このメールアドレスは承認されていません。管理者に連絡してください。");
+        return;
       }
     } catch (err) {
       setError(ERROR_MSGS[err.code] || err.message);
