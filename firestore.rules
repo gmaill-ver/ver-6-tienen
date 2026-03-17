@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /appConfig/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /attendance/{memberId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /allowedEmails/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        request.auth.token.email == "u.t.o0911@gmail.com";
+    }
+  }
+}
