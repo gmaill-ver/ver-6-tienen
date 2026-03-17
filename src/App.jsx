@@ -95,7 +95,7 @@ export default function App() {
       minHeight: "100vh", background: "#0d0f18",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Hiragino Kaku Gothic ProN',sans-serif", color: "#e2e8f0",
-    }}>読み込み中...</div>
+    }}>もーーっす</div>
   );
   if (!user) return <AuthScreen />;
 
@@ -206,7 +206,7 @@ function MainApp({ user }) {
       minHeight: "100vh", background: "#0d0f18",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Hiragino Kaku Gothic ProN',sans-serif", color: "#e2e8f0",
-    }}>読み込み中...</div>
+    }}>もーーっす</div>
   );
 
   const isAdmin = user.email === import.meta.env.VITE_ADMIN_EMAIL;
@@ -895,7 +895,7 @@ function WhitelistSettings({ onBack }) {
       {/* メール一覧 */}
       {loading ? (
         <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center", padding: 20 }}>
-          読み込み中...
+          もーーっす
         </div>
       ) : emails.length === 0 ? (
         <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 13, textAlign: "center", padding: 20 }}>
