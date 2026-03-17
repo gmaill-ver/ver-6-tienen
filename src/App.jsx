@@ -258,7 +258,8 @@ function HomeScreen({ onInput, onBoard, onSettings, user, viewYear, viewMonth })
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", minHeight: "100vh", gap: 32, padding: 24,
+      justifyContent: "center", minHeight: "100vh", gap: 24, padding: 24,
+      paddingBottom: "30vh",
     }}>
       {/* 右上: 設定⚙️ + ログアウト */}
       <div style={{
@@ -290,7 +291,7 @@ function HomeScreen({ onInput, onBoard, onSettings, user, viewYear, viewMonth })
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
         <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "0.06em", marginBottom: 6 }}>
-          出勤状況管理
+          勤務割
         </div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{viewYear}年 {viewMonth}月</div>
       </div>
