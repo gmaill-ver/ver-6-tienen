@@ -1,4 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
+import AuthScreen from "./AuthScreen";
 
 // ── Utils ─────────────────────────────────────────────────────────
 const LS = {
@@ -109,6 +113,24 @@ const inputStyle = {
 
 // ── App ───────────────────────────────────────────────────────────
 export default function App() {
+  // Auth state (undefined=loading, null=未ログイン, object=ログイン済み)
+  const [user, setUser] = useState(undefined);
+
+  useEffect(() => onAuthStateChanged(auth, u => setUser(u)), []);
+
+  if (user === undefined) return (
+    <div style={{
+      minHeight: "100vh", background: "#0d0f18",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Hiragino Kaku Gothic ProN',sans-serif", color: "#e2e8f0",
+    }}>読み込み中...</div>
+  );
+  if (!user) return <AuthScreen />;
+
+  return <MainApp user={user} />;
+}
+
+function MainApp({ user }) {
   const [screen, setScreen] = useState("home");
   const [selectedMember, setSelectedMember] = useState(null);
   const [teams]    = useState(() => LS.get("teams", DEFAULT_TEAMS));
@@ -116,12 +138,23 @@ export default function App() {
   const [members,  setMembers]  = useState(() => LS.get("members",  DEFAULT_MEMBERS));
   const [attendanceData, setAttendanceData] = useState(() => LS.get("attendanceData", {}));
 
-  useEffect(() => { LS.set("statuses",      statuses);      }, [statuses]);
-  useEffect(() => { LS.set("members",       members);       }, [members]);
-  useEffect(() => { LS.set("attendanceData", attendanceData); }, [attendanceData]);
+  // 月ナビゲーション
+  const [viewYear,  setViewYear]  = useState(NOW.getFullYear());
+  const [viewMonth, setViewMonth] = useState(NOW.getMonth() + 1);
 
-  const year  = NOW.getFullYear();
-  const month = NOW.getMonth() + 1;
+  const goPrev = () => {
+    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12); }
+    else setViewMonth(m => m - 1);
+  };
+  const goNext = () => {
+    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
+    else setViewMonth(m => m + 1);
+  };
+  const goToday = () => { setViewYear(NOW.getFullYear()); setViewMonth(NOW.getMonth() + 1); };
+
+  useEffect(() => { LS.set("statuses",       statuses);       }, [statuses]);
+  useEffect(() => { LS.set("members",        members);        }, [members]);
+  useEffect(() => { LS.set("attendanceData", attendanceData); }, [attendanceData]);
 
   const getTeam = (id) => teams.find(t => t.id === id);
   const getSt   = (id) => {
@@ -130,7 +163,9 @@ export default function App() {
     return { ...s, bg: hexToRgba(s.color, 0.2), border: hexToRgba(s.color, 0.45) };
   };
 
-  const ctx = { teams, statuses, members, attendanceData, setAttendanceData, getTeam, getSt, year, month };
+  const isAdmin = user.email === import.meta.env.VITE_ADMIN_EMAIL;
+  const nav     = { viewYear, viewMonth, goPrev, goNext, goToday };
+  const ctx     = { teams, statuses, members, attendanceData, setAttendanceData, getTeam, getSt, ...nav };
 
   return (
     <div style={{
@@ -143,7 +178,8 @@ export default function App() {
           onInput={() => setScreen("input")}
           onBoard={() => setScreen("board")}
           onSettings={() => setScreen("settings")}
-          year={year} month={month}
+          user={user}
+          viewYear={viewYear} viewMonth={viewMonth}
         />
       )}
       {screen === "input" && (
@@ -163,6 +199,7 @@ export default function App() {
           statuses={statuses} setStatuses={setStatuses}
           members={members}   setMembers={setMembers}
           getTeam={getTeam}   getSt={getSt}
+          isAdmin={isAdmin}
           onBack={() => setScreen("home")}
         />
       )}
@@ -171,22 +208,39 @@ export default function App() {
 }
 
 // ── Home ──────────────────────────────────────────────────────────
-function HomeScreen({ onInput, onBoard, onSettings, year, month }) {
+function HomeScreen({ onInput, onBoard, onSettings, user, viewYear, viewMonth }) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", minHeight: "100vh", gap: 32, padding: 24,
     }}>
+      {/* ユーザー情報 + ログアウト */}
+      <div style={{
+        position: "fixed", top: 16, right: 16,
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{user.email}</span>
+        <button
+          onClick={() => signOut(auth)}
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.4)", borderRadius: 6,
+            padding: "4px 10px", fontSize: 11, cursor: "pointer",
+          }}
+        >ログアウト</button>
+      </div>
+
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
         <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "0.06em", marginBottom: 6 }}>
           出勤状況管理
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{year}年 {month}月</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{viewYear}年 {viewMonth}月</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", maxWidth: 320 }}>
         <BigButton label="自分の勤務を入力する" sub="カレンダーに月間の勤務を登録" color="#6366f1" onClick={onInput} />
-        <BigButton label="全体ボードを見る"     sub="今日の班ごと出勤状況を確認"   color="#059669" onClick={onBoard} />
+        <BigButton label="全体ボードを見る"     sub="月間の班ごと出勤状況を確認"   color="#059669" onClick={onBoard} />
         <BigButton label="設定"                sub="メンバー・ステータスの管理"   color="#64748b" onClick={onSettings} />
       </div>
     </div>
@@ -214,11 +268,42 @@ function BigButton({ label, sub, color, onClick }) {
 }
 
 // ── Input Screen ──────────────────────────────────────────────────
+function MonthNav({ viewYear, viewMonth, goPrev, goNext, goToday }) {
+  const isThisMonth = viewYear === NOW.getFullYear() && viewMonth === NOW.getMonth() + 1;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <button onClick={goPrev} style={{
+        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+        color: "rgba(255,255,255,0.7)", borderRadius: 7, padding: "5px 10px",
+        fontSize: 13, cursor: "pointer",
+      }}>‹</button>
+      <div style={{
+        fontSize: 14, fontWeight: 800, minWidth: 90, textAlign: "center",
+        color: isThisMonth ? "#818cf8" : "#e2e8f0",
+      }}>{viewYear}年{viewMonth}月</div>
+      <button onClick={goNext} style={{
+        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+        color: "rgba(255,255,255,0.7)", borderRadius: 7, padding: "5px 10px",
+        fontSize: 13, cursor: "pointer",
+      }}>›</button>
+      {!isThisMonth && (
+        <button onClick={goToday} style={{
+          background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)",
+          color: "#818cf8", borderRadius: 7, padding: "4px 8px",
+          fontSize: 10, cursor: "pointer", fontWeight: 700,
+        }}>今月</button>
+      )}
+    </div>
+  );
+}
+
 function InputScreen({
-  year, month, selectedMember, setSelectedMember,
+  viewYear, viewMonth, goPrev, goNext, goToday,
+  selectedMember, setSelectedMember,
   attendanceData, setAttendanceData,
   members, teams, statuses, getTeam, getSt, onBack,
 }) {
+  const year = viewYear; const month = viewMonth;
   const [activeStatus, setActiveStatus] = useState(null); // 選択中カテゴリ（null=消去モード以外）
   const [eraseMode, setEraseMode] = useState(false);
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
@@ -264,12 +349,12 @@ function InputScreen({
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
-        <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
           <div style={{ fontSize: 15, fontWeight: 800 }}>勤務入力</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{year}年{month}月</div>
         </div>
+        <MonthNav viewYear={viewYear} viewMonth={viewMonth} goPrev={goPrev} goNext={goNext} goToday={goToday} />
       </div>
 
       {!selectedMember ? (
@@ -460,7 +545,8 @@ function InputScreen({
 }
 
 // ── Board Screen ──────────────────────────────────────────────────
-function BoardScreen({ year, month, attendanceData, members, teams, statuses, getTeam, getSt, onBack }) {
+function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, members, teams, statuses, getTeam, getSt, onBack }) {
+  const year = viewYear; const month = viewMonth;
   const [filterTeam, setFilterTeam] = useState("ALL");
 
   const days = new Date(year, month, 0).getDate();
@@ -484,14 +570,17 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
   return (
     <div style={{ padding: "16px 12px" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-            {year}年{month}月 · 今日の出勤 {presentToday}/{members.length}人
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>全体ボード</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+              今日の出勤 {presentToday}/{members.length}人
+            </div>
           </div>
         </div>
+        <MonthNav viewYear={viewYear} viewMonth={viewMonth} goPrev={goPrev} goNext={goNext} goToday={goToday} />
       </div>
 
       {/* Team filter */}
@@ -656,7 +745,7 @@ function BoardScreen({ year, month, attendanceData, members, teams, statuses, ge
 }
 
 // ── Settings Screen ───────────────────────────────────────────────
-function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, getTeam, getSt, onBack }) {
+function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, getTeam, getSt, isAdmin, onBack }) {
   const [section, setSection] = useState(null);
 
   if (section === "members") {
@@ -675,6 +764,9 @@ function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, get
       />
     );
   }
+  if (section === "whitelist" && isAdmin) {
+    return <WhitelistSettings onBack={() => setSection(null)} />;
+  }
 
   return (
     <div style={{ maxWidth: 500, margin: "0 auto", padding: "16px 12px" }}>
@@ -684,8 +776,103 @@ function SettingsScreen({ teams, statuses, setStatuses, members, setMembers, get
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <SettingRow icon="👥" title="メンバー管理"   sub="メンバーの追加・編集・削除"       onClick={() => setSection("members")} />
-        <SettingRow icon="🏷️" title="ステータス管理" sub="勤務カテゴリの追加・編集・削除" onClick={() => setSection("statuses")} />
+        <SettingRow icon="🏷️" title="ステータス管理" sub="勤務カテゴリの追加・編集・削除"   onClick={() => setSection("statuses")} />
+        {isAdmin && (
+          <SettingRow icon="🔐" title="承認メール管理" sub="ログインを許可するメールアドレスの管理" onClick={() => setSection("whitelist")} />
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── Whitelist Settings (管理者のみ) ───────────────────────────────
+function WhitelistSettings({ onBack }) {
+  const [emails,   setEmails]   = useState([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+
+  useEffect(() => {
+    getDocs(collection(db, "allowedEmails")).then(snap => {
+      setEmails(snap.docs.map(d => d.data().email).sort());
+      setLoading(false);
+    });
+  }, []);
+
+  const addEmail = async () => {
+    const e = newEmail.trim().toLowerCase();
+    if (!e || emails.includes(e)) return;
+    setSaving(true);
+    await setDoc(doc(db, "allowedEmails", e), { email: e, addedAt: new Date() });
+    setEmails(prev => [...prev, e].sort());
+    setNewEmail("");
+    setSaving(false);
+  };
+
+  const removeEmail = async (email) => {
+    if (!window.confirm(`${email} を削除しますか？`)) return;
+    await deleteDoc(doc(db, "allowedEmails", email));
+    setEmails(prev => prev.filter(e => e !== email));
+  };
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <button onClick={onBack} style={backBtnStyle}>← 戻る</button>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>承認メール管理</div>
+      </div>
+
+      {/* 追加フォーム */}
+      <div style={{
+        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12, padding: 14, marginBottom: 20,
+      }}>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>
+          承認するメールアドレスを追加
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="email" value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addEmail()}
+            placeholder="example@email.com"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <button onClick={addEmail} disabled={saving} style={{
+            background: "rgba(99,102,241,0.3)", border: "1px solid rgba(99,102,241,0.5)",
+            color: "#818cf8", borderRadius: 8, padding: "8px 16px",
+            fontSize: 13, cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap",
+          }}>{saving ? "..." : "追加"}</button>
+        </div>
+      </div>
+
+      {/* メール一覧 */}
+      {loading ? (
+        <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center", padding: 20 }}>
+          読み込み中...
+        </div>
+      ) : emails.length === 0 ? (
+        <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 13, textAlign: "center", padding: 20 }}>
+          承認済みメールアドレスがありません
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {emails.map(email => (
+            <div key={email} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 8, padding: "9px 12px",
+            }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>{email}</span>
+              <button onClick={() => removeEmail(email)} style={{
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                color: "#f87171", borderRadius: 6, padding: "4px 10px",
+                fontSize: 11, cursor: "pointer",
+              }}>削除</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
