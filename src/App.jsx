@@ -43,18 +43,7 @@ const DEFAULT_TEAMS = [
   { id: "t4", name: "事務所",  color: "#8b5cf6", accent: "#c4b5fd" },
 ];
 
-const DEFAULT_STATUSES = [
-  { id: "出勤",    label: "出",    color: "#22c55e" },
-  { id: "代休",    label: "代",    color: "#60a5fa" },
-  { id: "入校",    label: "入",    color: "#c084fc" },
-  { id: "休（前）", label: "（前）", color: "#fb923c" },
-  { id: "休（後）", label: "（後）", color: "#fdba74" },
-  { id: "特別",    label: "特",    color: "#facc15" },
-  { id: "当直",    label: "当",    color: "#818cf8" },
-  { id: "増警",    label: "増",    color: "#f87171" },
-  { id: "訓練",    label: "訓",    color: "#2dd4bf" },
-  { id: "明け",    label: "明",    color: "#f472b6" },
-];
+const DEFAULT_STATUSES = [];
 
 const DEFAULT_MEMBERS = [];
 
@@ -125,28 +114,10 @@ function MainApp({ user }) {
   };
   const goToday = () => { setViewYear(NOW.getFullYear()); setViewMonth(NOW.getMonth() + 1); };
 
-  // Firestore リアルタイム同期（初回はlocalStorageからマイグレーション）
+  // Firestore リアルタイム同期
   useEffect(() => {
     let loadedCount = 0;
     const markLoaded = () => { if (++loadedCount >= 3) setLoading(false); };
-
-    // localStorageデータをFirestoreへ一度だけ移行
-    if (!localStorage.getItem("ls_migrated")) {
-      const lsTeams      = LS.get("teams",        null);
-      const lsStatuses   = LS.get("statuses",     null);
-      const lsMembers    = LS.get("members",      null);
-      const lsAttendance = LS.get("attendanceData", null);
-      const writes = [];
-      if (lsTeams)    writes.push(setDoc(doc(db, "appConfig", "teams"),    { list: lsTeams }));
-      if (lsStatuses) writes.push(setDoc(doc(db, "appConfig", "statuses"), { list: lsStatuses }));
-      if (lsMembers)  writes.push(setDoc(doc(db, "appConfig", "members"),  { list: lsMembers }));
-      if (lsAttendance) {
-        for (const [mid, records] of Object.entries(lsAttendance)) {
-          writes.push(setDoc(doc(db, "attendance", String(mid)), records));
-        }
-      }
-      Promise.all(writes).then(() => localStorage.setItem("ls_migrated", "1"));
-    }
 
     const unsubTeams = onSnapshot(doc(db, "appConfig", "teams"), snap => {
       if (snap.exists()) setTeams(snap.data().list);
