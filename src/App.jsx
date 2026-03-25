@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -99,6 +99,7 @@ function MainApp({ user }) {
   const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
   const [members,  setMembers]  = useState(DEFAULT_MEMBERS);
   const [attendanceData, setAttendanceData] = useState({});
+  const [dutiesData,    setDutiesData]    = useState({});
 
   // 月ナビゲーション
   const [viewYear,  setViewYear]  = useState(NOW.getFullYear());
@@ -139,8 +140,13 @@ function MainApp({ user }) {
       snap.forEach(d => { data[d.id] = d.data(); });
       setAttendanceData(data);
     });
+    const unsubDuties = onSnapshot(collection(db, "duties"), snap => {
+      const data = {};
+      snap.forEach(d => { data[d.id] = d.data().list || []; });
+      setDutiesData(data);
+    });
 
-    return () => { unsubTeams(); unsubStatuses(); unsubMembers(); unsubAttendance(); };
+    return () => { unsubTeams(); unsubStatuses(); unsubMembers(); unsubAttendance(); unsubDuties(); };
   }, []);
 
   // Firestore 書き込み関数
@@ -165,6 +171,11 @@ function MainApp({ user }) {
     }
   };
 
+  const saveDuties = (memberId, list) => {
+    setDutiesData(prev => ({ ...prev, [String(memberId)]: list }));
+    setDoc(doc(db, "duties", String(memberId)), { list });
+  };
+
   const getTeam = (id) => teams.find(t => t.id === id);
   const getSt   = (id) => {
     const s = statuses.find(s => s.id === id);
@@ -182,7 +193,7 @@ function MainApp({ user }) {
 
   const isAdmin = user.email === import.meta.env.VITE_ADMIN_EMAIL;
   const nav     = { viewYear, viewMonth, goPrev, goNext, goToday };
-  const ctx     = { teams, statuses, members, attendanceData, updateAttendance, getTeam, getSt, ...nav };
+  const ctx     = { teams, statuses, members, attendanceData, updateAttendance, dutiesData, saveDuties, getTeam, getSt, ...nav };
 
   return (
     <div style={{
@@ -328,6 +339,7 @@ function InputScreen({
   viewYear, viewMonth, goPrev, goNext, goToday,
   selectedMember, setSelectedMember,
   attendanceData, updateAttendance,
+  dutiesData, saveDuties,
   members, teams, statuses, getTeam, getSt, onBack,
 }) {
   const year = viewYear; const month = viewMonth;
@@ -545,14 +557,164 @@ function InputScreen({
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 8 }}>
             ※ カテゴリを選択してから日付をタップ。同じカテゴリをタップするとクリア
           </div>
+
+          {/* ── 教務予定 ── */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{
+              fontSize: 12, fontWeight: 800,
+              color: "rgba(255,255,255,0.5)",
+              marginBottom: 10, letterSpacing: "0.05em",
+            }}>教務予定</div>
+
+            {(dutiesData[String(selectedMember)] || [])
+              .filter(d => {
+                const prefix = `${year}-${String(month).padStart(2,"0")}`;
+                return d.start <= `${prefix}-31` && d.end >= `${prefix}-01`;
+              })
+              .sort((a, b) => a.start.localeCompare(b.start))
+              .map(duty => (
+                <div key={duty.id} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 8, padding: "7px 12px", marginBottom: 6,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: duty.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{duty.name}</span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                      {parseInt(duty.start.slice(8))}日
+                      {duty.start !== duty.end && ` 〜 ${parseInt(duty.end.slice(8))}日`}
+                    </span>
+                  </div>
+                  <button onClick={() => {
+                    const list = (dutiesData[String(selectedMember)] || []).filter(d2 => d2.id !== duty.id);
+                    saveDuties(selectedMember, list);
+                  }} style={{
+                    background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                    color: "#f87171", borderRadius: 6, padding: "3px 9px",
+                    fontSize: 11, cursor: "pointer",
+                  }}>削除</button>
+                </div>
+              ))
+            }
+
+            <DutyAddForm
+              year={year} month={month}
+              onAdd={duty => {
+                const list = [...(dutiesData[String(selectedMember)] || []), duty];
+                saveDuties(selectedMember, list);
+              }}
+            />
+          </div>
         </>
       )}
     </div>
   );
 }
 
+// ── Duty Add Form ─────────────────────────────────────────────────
+const DUTY_COLORS = ["#f97316","#14b8a6","#ec4899","#8b5cf6","#3b82f6","#22c55e","#facc15"];
+
+function DutyAddForm({ year, month, onAdd }) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const [name,     setName]     = useState("");
+  const [startDay, setStartDay] = useState(1);
+  const [endDay,   setEndDay]   = useState(1);
+  const [color,    setColor]    = useState(DUTY_COLORS[0]);
+
+  const dayOptions = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const add = () => {
+    if (!name.trim()) return;
+    const s = Math.min(startDay, endDay);
+    const e = Math.max(startDay, endDay);
+    onAdd({ id: Date.now(), name: name.trim(), start: dateKey(year, month, s), end: dateKey(year, month, e), color });
+    setName("");
+  };
+
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 10, padding: 12, marginTop: 4,
+    }}>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
+        教務予定を追加
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <input
+          style={inputStyle}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="教務名（例: 研修、出張）"
+        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select
+            style={{ ...inputStyle, flex: 1 }}
+            value={startDay}
+            onChange={e => setStartDay(Number(e.target.value))}
+          >
+            {dayOptions.map(d => <option key={d} value={d}>{d}日</option>)}
+          </select>
+          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, flexShrink: 0 }}>〜</span>
+          <select
+            style={{ ...inputStyle, flex: 1 }}
+            value={endDay}
+            onChange={e => setEndDay(Number(e.target.value))}
+          >
+            {dayOptions.map(d => <option key={d} value={d}>{d}日</option>)}
+          </select>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {DUTY_COLORS.map(c => (
+            <button key={c} onClick={() => setColor(c)} style={{
+              width: 22, height: 22, borderRadius: 4, background: c, padding: 0, cursor: "pointer",
+              border: color === c ? "2.5px solid #fff" : "2px solid transparent",
+            }} />
+          ))}
+        </div>
+        <button onClick={add} style={{
+          background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
+          color: "#818cf8", borderRadius: 8, padding: "8px",
+          fontSize: 12, cursor: "pointer", fontWeight: 700,
+        }}>追加</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Build duty cells for board row ────────────────────────────────
+function buildDutyCells(dutiesData, memberId, year, month, totalDays) {
+  const yStr = String(year);
+  const mStr = String(month).padStart(2, "0");
+  const firstDk = `${yStr}-${mStr}-01`;
+  const lastDk  = `${yStr}-${mStr}-${String(totalDays).padStart(2, "0")}`;
+
+  const duties = (dutiesData[String(memberId)] || [])
+    .filter(d => d.end >= firstDk && d.start <= lastDk)
+    .map(d => ({
+      ...d,
+      s: Math.max(parseInt(d.start.slice(8)), 1),
+      e: Math.min(parseInt(d.end.slice(8)), totalDays),
+    }))
+    .sort((a, b) => a.s - b.s);
+
+  const cells = [];
+  let cur = 1;
+  for (const duty of duties) {
+    if (duty.e < cur) continue;
+    const s = Math.max(duty.s, cur);
+    if (s > cur) cells.push({ type: "empty", span: s - cur });
+    cells.push({ type: "duty", duty, span: duty.e - s + 1 });
+    cur = duty.e + 1;
+  }
+  if (cur <= totalDays) cells.push({ type: "empty", span: totalDays - cur + 1 });
+  return cells;
+}
+
 // ── Board Screen ──────────────────────────────────────────────────
-function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, members, teams, statuses, getTeam, getSt, onBack }) {
+function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, dutiesData, members, teams, statuses, getTeam, getSt, onBack }) {
   const year = viewYear; const month = viewMonth;
   const [filterTeam, setFilterTeam] = useState("ALL");
   const [selectedDate, setSelectedDate] = useState(todayKey);
@@ -684,65 +846,102 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           <tbody>
             {displayedMembers.map(mem => {
               const t = getTeam(mem.teamId);
+              const dutyCells = buildDutyCells(dutiesData, mem.id, year, month, days);
+              const hasDuties = dutyCells.some(c => c.type === "duty");
+
               return (
-                <tr key={mem.id}>
-                  {/* Member name cell */}
-                  <td style={{
-                    position: "sticky", left: 0, zIndex: 5,
-                    background: "#0d0f18",
-                    padding: "5px 10px",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                    borderRight: "1px solid rgba(255,255,255,0.08)",
-                    whiteSpace: "nowrap",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      {t && (
-                        <span style={{
-                          width: 3, height: 14, borderRadius: 2,
-                          background: t.color, display: "inline-block", flexShrink: 0,
-                        }} />
-                      )}
-                      <span style={{
-                        fontSize: 12, fontWeight: 600,
-                        color: "rgba(255,255,255,0.8)",
-                      }}>{mem.name}</span>
-                      {mem.role && (
-                        <span style={{
-                          fontSize: 8, padding: "1px 4px", borderRadius: 3,
-                          background: "rgba(139,92,246,0.2)", color: "#a78bfa",
-                        }}>{mem.role}</span>
-                      )}
-                    </div>
-                  </td>
-                  {/* Status cells */}
-                  {allDays.map(day => {
-                    const dk  = dateKey(year, month, day);
-                    const dow = new Date(year, month - 1, day).getDay();
-                    const sid = attendanceData[String(mem.id)]?.[dk] || null;
-                    const st  = sid ? getSt(sid) : null;
-                    const isToday = dk === todayKey;
-                    const isSelected = dk === selectedDate;
-                    const isWknd  = dow === 0 || dow === 6;
-                    return (
-                      <td key={day} style={{
-                        textAlign: "center", padding: "3px 2px",
-                        borderBottom: "1px solid rgba(255,255,255,0.04)",
-                        borderRight: "1px solid rgba(255,255,255,0.04)",
-                        background: isSelected ? "rgba(99,80,200,0.15)"
-                          : isToday ? "rgba(99,102,241,0.08)"
-                          : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
-                      }}>
-                        {st ? (
+                <Fragment key={mem.id}>
+                  {/* ── 教務予定行 ── */}
+                  <tr>
+                    <td rowSpan={2} style={{
+                      position: "sticky", left: 0, zIndex: 5,
+                      background: "#0d0f18",
+                      padding: "5px 10px",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderRight: "1px solid rgba(255,255,255,0.08)",
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        {t && (
                           <span style={{
-                            color: st.color, fontSize: 10, fontWeight: 800,
-                          }}>{st.label}</span>
-                        ) : (
-                          <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 10 }}>-</span>
+                            width: 3, height: 14, borderRadius: 2,
+                            background: t.color, display: "inline-block", flexShrink: 0,
+                          }} />
                         )}
-                      </td>
-                    );
-                  })}
-                </tr>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+                          {mem.name}
+                        </span>
+                        {mem.role && (
+                          <span style={{
+                            fontSize: 8, padding: "1px 4px", borderRadius: 3,
+                            background: "rgba(139,92,246,0.2)", color: "#a78bfa",
+                          }}>{mem.role}</span>
+                        )}
+                      </div>
+                    </td>
+                    {dutyCells.map((cell, i) => {
+                      if (cell.type === "empty") {
+                        return (
+                          <td key={i} colSpan={cell.span} style={{
+                            background: "#0d0f18",
+                            height: hasDuties ? 20 : 4,
+                            borderRight: "1px solid rgba(255,255,255,0.04)",
+                          }} />
+                        );
+                      }
+                      const { duty, span } = cell;
+                      return (
+                        <td key={i} colSpan={span} style={{
+                          padding: "3px 2px",
+                          background: "#0d0f18",
+                          borderRight: "1px solid rgba(255,255,255,0.04)",
+                        }}>
+                          <div style={{
+                            background: hexToRgba(duty.color, 0.2),
+                            border: `1px solid ${hexToRgba(duty.color, 0.5)}`,
+                            borderRadius: 3, height: 14,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 8, color: duty.color, fontWeight: 700,
+                            whiteSpace: "nowrap", overflow: "hidden",
+                            padding: "0 2px",
+                          }}>
+                            {span > 1 ? `← ${duty.name} →` : duty.name}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {/* ── 勤務ステータス行 ── */}
+                  <tr>
+                    {allDays.map(day => {
+                      const dk  = dateKey(year, month, day);
+                      const dow = new Date(year, month - 1, day).getDay();
+                      const sid = attendanceData[String(mem.id)]?.[dk] || null;
+                      const st  = sid ? getSt(sid) : null;
+                      const isToday    = dk === todayKey;
+                      const isSelected = dk === selectedDate;
+                      const isWknd     = dow === 0 || dow === 6;
+                      return (
+                        <td key={day} style={{
+                          textAlign: "center", padding: "4px 2px",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          borderRight: "1px solid rgba(255,255,255,0.04)",
+                          height: 26,
+                          background: isSelected ? "rgba(99,80,200,0.15)"
+                            : isToday ? "rgba(99,102,241,0.08)"
+                            : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
+                        }}>
+                          {st ? (
+                            <span style={{ color: st.color, fontSize: 10, fontWeight: 800 }}>{st.label}</span>
+                          ) : (
+                            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 10 }}>-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>
