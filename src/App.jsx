@@ -756,7 +756,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           return (
             <div key={s.id} style={{
               fontSize: 11, color: st.color, fontWeight: 700,
-            }}>{st.label} {s.id}</div>
+            }}>{s.id}</div>
           );
         })}
       </div>
