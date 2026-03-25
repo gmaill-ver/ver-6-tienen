@@ -559,88 +559,148 @@ function InputScreen({
           </div>
 
           {/* ── 教務予定 ── */}
-          <div style={{ marginTop: 20 }}>
-            <div style={{
-              fontSize: 12, fontWeight: 800,
-              color: "rgba(255,255,255,0.5)",
-              marginBottom: 10, letterSpacing: "0.05em",
-            }}>教務予定</div>
-
-            {(dutiesData[String(selectedMember)] || [])
-              .filter(d => {
-                const prefix = `${year}-${String(month).padStart(2,"0")}`;
-                return d.start <= `${prefix}-31` && d.end >= `${prefix}-01`;
-              })
-              .sort((a, b) => a.start.localeCompare(b.start))
-              .map(duty => (
-                <div key={duty.id} style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 8, padding: "7px 12px", marginBottom: 6,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: duty.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{duty.name}</span>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                      {parseInt(duty.start.slice(8))}日
-                      {duty.start !== duty.end && ` 〜 ${parseInt(duty.end.slice(8))}日`}
-                    </span>
-                  </div>
-                  <button onClick={() => {
-                    const list = (dutiesData[String(selectedMember)] || []).filter(d2 => d2.id !== duty.id);
-                    saveDuties(selectedMember, list);
-                  }} style={{
-                    background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
-                    color: "#f87171", borderRadius: 6, padding: "3px 9px",
-                    fontSize: 11, cursor: "pointer",
-                  }}>削除</button>
-                </div>
-              ))
-            }
-
-            <DutyAddForm
-              year={year} month={month}
-              onAdd={duty => {
-                const list = [...(dutiesData[String(selectedMember)] || []), duty];
-                saveDuties(selectedMember, list);
-              }}
-            />
-          </div>
+          <DutySection
+            year={year} month={month}
+            memberId={selectedMember}
+            dutiesData={dutiesData}
+            saveDuties={saveDuties}
+          />
         </>
       )}
     </div>
   );
 }
 
-// ── Duty Add Form ─────────────────────────────────────────────────
-const DUTY_COLORS = ["#f97316","#14b8a6","#ec4899","#8b5cf6","#3b82f6","#22c55e","#facc15"];
+// ── Duty Section & Form ───────────────────────────────────────────
+const DUTY_COLORS = [
+  "#f97316","#14b8a6","#ec4899","#8b5cf6","#3b82f6","#22c55e","#facc15",
+  "#94a3b8","#64748b","#ffffff",
+];
 
-function DutyAddForm({ year, month, onAdd }) {
+function DutySection({ year, month, memberId, dutiesData, saveDuties }) {
+  const [editingId, setEditingId] = useState(null); // null=新規追加モード, id=編集モード
+
+  const prefix = `${year}-${String(month).padStart(2,"0")}`;
+  const list = (dutiesData[String(memberId)] || [])
+    .filter(d => d.start <= `${prefix}-31` && d.end >= `${prefix}-01`)
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  const handleSave = (duty) => {
+    const all = dutiesData[String(memberId)] || [];
+    if (editingId === null) {
+      saveDuties(memberId, [...all, duty]);
+    } else {
+      saveDuties(memberId, all.map(d => d.id === editingId ? duty : d));
+      setEditingId(undefined); // 編集完了→フォーム閉じる
+    }
+  };
+
+  const handleDelete = (id) => {
+    saveDuties(memberId, (dutiesData[String(memberId)] || []).filter(d => d.id !== id));
+    if (editingId === id) setEditingId(undefined);
+  };
+
+  // editingId: null=新規フォーム表示, undefined=フォーム非表示, number=編集フォーム表示
+  const showAddForm   = editingId === null;
+  const editingDuty   = typeof editingId === "number" ? list.find(d => d.id === editingId) : null;
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)", letterSpacing: "0.05em" }}>
+          教務予定
+        </div>
+        {!showAddForm && (
+          <button onClick={() => setEditingId(null)} style={{
+            background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)",
+            color: "#818cf8", borderRadius: 6, padding: "3px 10px",
+            fontSize: 11, cursor: "pointer", fontWeight: 700,
+          }}>+ 追加</button>
+        )}
+      </div>
+
+      {list.map(duty => (
+        <div key={duty.id} style={{
+          background: editingId === duty.id ? "rgba(99,102,241,0.06)" : "rgba(255,255,255,0.03)",
+          border: editingId === duty.id ? "1px solid rgba(99,102,241,0.3)" : "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 8, padding: "7px 12px", marginBottom: 6,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: "50%", background: duty.color, flexShrink: 0,
+                border: duty.color === "#ffffff" ? "1px solid rgba(255,255,255,0.4)" : "none",
+              }} />
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{duty.name}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                {parseInt(duty.start.slice(8))}日
+                {duty.start !== duty.end && ` 〜 ${parseInt(duty.end.slice(8))}日`}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 5 }}>
+              <button onClick={() => setEditingId(editingId === duty.id ? undefined : duty.id)} style={{
+                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.5)", borderRadius: 6, padding: "3px 9px",
+                fontSize: 11, cursor: "pointer",
+              }}>{editingId === duty.id ? "閉じる" : "編集"}</button>
+              <button onClick={() => handleDelete(duty.id)} style={{
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                color: "#f87171", borderRadius: 6, padding: "3px 9px",
+                fontSize: 11, cursor: "pointer",
+              }}>削除</button>
+            </div>
+          </div>
+
+          {editingId === duty.id && (
+            <div style={{ marginTop: 10 }}>
+              <DutyForm
+                year={year} month={month}
+                initial={duty}
+                onSave={(updated) => { handleSave(updated); setEditingId(undefined); }}
+                onCancel={() => setEditingId(undefined)}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {showAddForm && (
+        <DutyForm
+          year={year} month={month}
+          onSave={handleSave}
+          onCancel={() => setEditingId(undefined)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DutyForm({ year, month, initial, onSave, onCancel }) {
   const daysInMonth = new Date(year, month, 0).getDate();
-  const [name,     setName]     = useState("");
-  const [startDay, setStartDay] = useState(1);
-  const [endDay,   setEndDay]   = useState(1);
-  const [color,    setColor]    = useState(DUTY_COLORS[0]);
+  const [name,     setName]     = useState(initial?.name  || "");
+  const [startDay, setStartDay] = useState(initial ? parseInt(initial.start.slice(8)) : 1);
+  const [endDay,   setEndDay]   = useState(initial ? parseInt(initial.end.slice(8))   : 1);
+  const [color,    setColor]    = useState(initial?.color || DUTY_COLORS[0]);
 
   const dayOptions = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const isEdit = !!initial;
 
-  const add = () => {
+  const save = () => {
     if (!name.trim()) return;
     const s = Math.min(startDay, endDay);
     const e = Math.max(startDay, endDay);
-    onAdd({ id: Date.now(), name: name.trim(), start: dateKey(year, month, s), end: dateKey(year, month, e), color });
-    setName("");
+    onSave({ id: initial?.id || Date.now(), name: name.trim(), start: dateKey(year, month, s), end: dateKey(year, month, e), color });
+    if (!isEdit) { setName(""); }
   };
 
   return (
     <div style={{
       background: "rgba(255,255,255,0.03)",
       border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 10, padding: 12, marginTop: 4,
+      borderRadius: 10, padding: 12, marginTop: isEdit ? 0 : 4,
     }}>
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>
-        教務予定を追加
+        {isEdit ? "教務予定を編集" : "教務予定を追加"}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <input
@@ -666,19 +726,30 @@ function DutyAddForm({ year, month, onAdd }) {
             {dayOptions.map(d => <option key={d} value={d}>{d}日</option>)}
           </select>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {DUTY_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)} style={{
               width: 22, height: 22, borderRadius: 4, background: c, padding: 0, cursor: "pointer",
-              border: color === c ? "2.5px solid #fff" : "2px solid transparent",
+              border: color === c
+                ? `2.5px solid ${c === "#ffffff" ? "#666" : "#fff"}`
+                : `2px solid ${c === "#ffffff" ? "rgba(255,255,255,0.2)" : "transparent"}`,
             }} />
           ))}
         </div>
-        <button onClick={add} style={{
-          background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
-          color: "#818cf8", borderRadius: 8, padding: "8px",
-          fontSize: 12, cursor: "pointer", fontWeight: 700,
-        }}>追加</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={save} style={{
+            background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
+            color: "#818cf8", borderRadius: 8, padding: "8px",
+            fontSize: 12, cursor: "pointer", fontWeight: 700, flex: 1,
+          }}>{isEdit ? "保存" : "追加"}</button>
+          {isEdit && (
+            <button onClick={onCancel} style={{
+              background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.4)", borderRadius: 8,
+              padding: "8px 16px", fontSize: 12, cursor: "pointer",
+            }}>キャンセル</button>
+          )}
+        </div>
       </div>
     </div>
   );
