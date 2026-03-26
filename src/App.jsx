@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -1033,6 +1033,7 @@ function TeamMemo({ teamId, year, month }) {
   const memoKey = `${teamId}_${year}_${String(month).padStart(2,"0")}`;
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(true);
+  const taRef = useRef(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "memos", memoKey), snap => {
@@ -1041,6 +1042,12 @@ function TeamMemo({ teamId, year, month }) {
     });
     return unsub;
   }, [memoKey]);
+
+  useEffect(() => {
+    if (!taRef.current) return;
+    taRef.current.style.height = "auto";
+    taRef.current.style.height = taRef.current.scrollHeight + "px";
+  }, [text]);
 
   const handleChange = (val) => {
     setText(val);
@@ -1074,17 +1081,18 @@ function TeamMemo({ teamId, year, month }) {
         >{saved ? "保存済み" : "保存"}</button>
       </div>
       <textarea
+        ref={taRef}
         value={text}
         onChange={e => handleChange(e.target.value)}
         placeholder="行事予定・申し送り事項などを入力..."
-        rows={4}
+        rows={1}
         style={{
           width: "100%", boxSizing: "border-box",
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 10, padding: "10px 12px",
           color: "#e2e8f0", fontSize: 13, lineHeight: 1.7,
-          resize: "vertical", outline: "none",
+          resize: "none", overflow: "hidden", outline: "none",
           fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",
         }}
       />
