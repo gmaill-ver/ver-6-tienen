@@ -1069,7 +1069,7 @@ function TeamMemo({ teamId, year, month }) {
         marginBottom: 8,
       }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
-          申し送り・行事メモ
+          情報共有
         </div>
         <div style={{ fontSize: 10, color: saving ? "#818cf8" : "rgba(255,255,255,0.2)" }}>
           {saving ? "保存中..." : "保存済み"}
@@ -1079,7 +1079,7 @@ function TeamMemo({ teamId, year, month }) {
         ref={taRef}
         value={text}
         onChange={e => handleChange(e.target.value)}
-        placeholder="行事予定・申し送り事項などを入力..."
+        placeholder="情報共有事項を入力..."
         rows={1}
         style={{
           width: "100%", boxSizing: "border-box",
