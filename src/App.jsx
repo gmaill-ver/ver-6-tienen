@@ -537,6 +537,21 @@ function InputScreen({
                         }}>今日</span>
                       )}
                     </div>
+                    {(dutiesData[String(selectedMember)] || [])
+                      .filter(d => d.start <= dk && d.end >= dk)
+                      .map(duty => (
+                        <div key={duty.id} style={{
+                          background: hexToRgba(duty.color, 0.2),
+                          border: `1px solid ${hexToRgba(duty.color, 0.4)}`,
+                          borderRadius: 3, padding: "1px 3px",
+                          fontSize: 8, color: duty.color, fontWeight: 700,
+                          textAlign: "center", overflow: "hidden",
+                          whiteSpace: "nowrap", textOverflow: "ellipsis",
+                        }}>
+                          {duty.start === dk ? duty.name : "─"}
+                        </div>
+                      ))
+                    }
                     {st && (
                       <div style={{
                         color: st.color, fontSize: 11, fontWeight: 800,
