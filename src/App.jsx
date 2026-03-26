@@ -956,7 +956,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                         return (
                           <td key={i} colSpan={cell.span} style={{
                             background: "#0d0f18",
-                            height: hasDuties ? 20 : 4,
+                            height: 20,
                             borderRight: "1px solid rgba(255,255,255,0.04)",
                           }} />
                         );
