@@ -1030,17 +1030,17 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
 
 // ── Team Memo ─────────────────────────────────────────────────────
 function TeamMemo({ teamId, year, month }) {
-  const memoKey = `${teamId}_${year}_${String(month).padStart(2,"0")}`;
-  const [text, setText] = useState("");
+  const memoKey  = `${teamId}_${year}_${String(month).padStart(2,"0")}`;
+  const lsKey    = `memo_${memoKey}`;
+  const [text, setText] = useState(() => LS.get(lsKey, ""));
   const [saving, setSaving] = useState(false);
   const taRef    = useRef(null);
   const timerRef = useRef(null);
-  const remoteRef = useRef(""); // Firestoreから来た最新値
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "memos", memoKey), snap => {
       const val = snap.exists() ? (snap.data().text || "") : "";
-      remoteRef.current = val;
+      LS.set(lsKey, val);
       setText(val);
       setSaving(false);
     });
