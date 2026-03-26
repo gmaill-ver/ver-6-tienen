@@ -1020,17 +1020,74 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
         </table>
       </div>
 
-      {/* Legend */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-        {statuses.map(s => {
-          const st = getSt(s.id);
-          return (
-            <div key={s.id} style={{
-              fontSize: 11, color: st.color, fontWeight: 700,
-            }}>{st.label}</div>
-          );
-        })}
+      {/* Team memo */}
+      {filterTeam !== "ALL" && (
+        <TeamMemo teamId={filterTeam} year={year} month={month} />
+      )}
+    </div>
+  );
+}
+
+// ── Team Memo ─────────────────────────────────────────────────────
+function TeamMemo({ teamId, year, month }) {
+  const memoKey = `${teamId}_${year}_${String(month).padStart(2,"0")}`;
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "memos", memoKey), snap => {
+      setText(snap.exists() ? (snap.data().text || "") : "");
+      setSaved(true);
+    });
+    return unsub;
+  }, [memoKey]);
+
+  const handleChange = (val) => {
+    setText(val);
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    setDoc(doc(db, "memos", memoKey), { text });
+    setSaved(true);
+  };
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 8,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
+          申し送り・行事メモ
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saved}
+          style={{
+            background: saved ? "rgba(255,255,255,0.03)" : "rgba(99,102,241,0.25)",
+            border: saved ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(99,102,241,0.5)",
+            color: saved ? "rgba(255,255,255,0.2)" : "#818cf8",
+            borderRadius: 7, padding: "4px 14px",
+            fontSize: 11, cursor: saved ? "default" : "pointer", fontWeight: 700,
+          }}
+        >{saved ? "保存済み" : "保存"}</button>
       </div>
+      <textarea
+        value={text}
+        onChange={e => handleChange(e.target.value)}
+        placeholder="行事予定・申し送り事項などを入力..."
+        rows={4}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 10, padding: "10px 12px",
+          color: "#e2e8f0", fontSize: 13, lineHeight: 1.7,
+          resize: "vertical", outline: "none",
+          fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",
+        }}
+      />
     </div>
   );
 }
