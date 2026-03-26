@@ -1032,13 +1032,17 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
 function TeamMemo({ teamId, year, month }) {
   const memoKey = `${teamId}_${year}_${String(month).padStart(2,"0")}`;
   const [text, setText] = useState("");
-  const [saved, setSaved] = useState(true);
-  const taRef = useRef(null);
+  const [saving, setSaving] = useState(false);
+  const taRef    = useRef(null);
+  const timerRef = useRef(null);
+  const remoteRef = useRef(""); // Firestoreから来た最新値
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "memos", memoKey), snap => {
-      setText(snap.exists() ? (snap.data().text || "") : "");
-      setSaved(true);
+      const val = snap.exists() ? (snap.data().text || "") : "";
+      remoteRef.current = val;
+      setText(val);
+      setSaving(false);
     });
     return unsub;
   }, [memoKey]);
@@ -1051,12 +1055,11 @@ function TeamMemo({ teamId, year, month }) {
 
   const handleChange = (val) => {
     setText(val);
-    setSaved(false);
-  };
-
-  const handleSave = () => {
-    setDoc(doc(db, "memos", memoKey), { text });
-    setSaved(true);
+    setSaving(true);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setDoc(doc(db, "memos", memoKey), { text: val });
+    }, 800);
   };
 
   return (
@@ -1068,17 +1071,9 @@ function TeamMemo({ teamId, year, month }) {
         <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.45)", letterSpacing: "0.05em" }}>
           申し送り・行事メモ
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saved}
-          style={{
-            background: saved ? "rgba(255,255,255,0.03)" : "rgba(99,102,241,0.25)",
-            border: saved ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(99,102,241,0.5)",
-            color: saved ? "rgba(255,255,255,0.2)" : "#818cf8",
-            borderRadius: 7, padding: "4px 14px",
-            fontSize: 11, cursor: saved ? "default" : "pointer", fontWeight: 700,
-          }}
-        >{saved ? "保存済み" : "保存"}</button>
+        <div style={{ fontSize: 10, color: saving ? "#818cf8" : "rgba(255,255,255,0.2)" }}>
+          {saving ? "保存中..." : "保存済み"}
+        </div>
       </div>
       <textarea
         ref={taRef}
@@ -1089,11 +1084,12 @@ function TeamMemo({ teamId, year, month }) {
         style={{
           width: "100%", boxSizing: "border-box",
           background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: `1px solid ${saving ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.08)"}`,
           borderRadius: 10, padding: "10px 12px",
           color: "#e2e8f0", fontSize: 13, lineHeight: 1.7,
           resize: "none", overflow: "hidden", outline: "none",
           fontFamily: "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",
+          transition: "border-color 0.2s",
         }}
       />
     </div>
