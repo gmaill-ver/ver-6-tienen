@@ -529,13 +529,6 @@ function InputScreen({
                       display: "flex", alignItems: "center", gap: 3,
                     }}>
                       {day}
-                      {isToday && (
-                        <span style={{
-                          fontSize: 8, color: "#818cf8",
-                          background: "rgba(99,102,241,0.25)",
-                          borderRadius: 3, padding: "0 4px", fontWeight: 800,
-                        }}>今日</span>
-                      )}
                     </div>
                     {(dutiesData[String(selectedMember)] || [])
                       .filter(d => d.start <= dk && d.end >= dk)
@@ -829,7 +822,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
     ? "全体"
     : (teams.find(t => t.id === filterTeam)?.name ?? "");
   const selectedDay = selectedDate.slice(8).replace(/^0/, "");
-  const selectedDateLabel = selectedDate === todayKey ? `今日(${selectedDay}日)` : `${selectedDay}日`;
+  const selectedDateLabel = `${selectedDay}日`;
 
   const CELL_W    = 36;
   const NAME_COL_W = 90;
@@ -917,13 +910,6 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                         : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.25)",
                     }}>{DOW[dow]}</div>
-                    {isToday && (
-                      <div style={{
-                        fontSize: 7, color: "#818cf8",
-                        background: "rgba(99,102,241,0.25)",
-                        borderRadius: 2, lineHeight: "14px",
-                      }}>今日</div>
-                    )}
                   </th>
                 );
               })}
