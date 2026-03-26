@@ -970,9 +970,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           borderRight: "1px solid rgba(255,255,255,0.04)",
                         }}>
                           <div style={{
-                            background: hexToRgba(duty.color, 0.2),
-                            border: `1px solid ${hexToRgba(duty.color, 0.5)}`,
-                            borderRadius: 3, height: 14,
+                            height: 14,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 8, color: duty.color, fontWeight: 700,
                             whiteSpace: "nowrap", overflow: "hidden",
