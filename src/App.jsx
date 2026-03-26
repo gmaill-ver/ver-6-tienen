@@ -969,15 +969,26 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           background: "#0d0f18",
                           borderRight: "1px solid rgba(255,255,255,0.04)",
                         }}>
-                          <div style={{
-                            height: 14,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 8, color: duty.color, fontWeight: 700,
-                            whiteSpace: "nowrap", overflow: "hidden",
-                            padding: "0 2px",
-                          }}>
-                            {span > 1 ? `← ${duty.name} →` : duty.name}
-                          </div>
+                          {span === 1 ? (
+                            <div style={{
+                              textAlign: "center", fontSize: 8,
+                              color: duty.color, fontWeight: 700,
+                            }}>{duty.name}</div>
+                          ) : (
+                            <div style={{
+                              display: "flex", alignItems: "center",
+                              width: "100%", padding: "0 1px", boxSizing: "border-box",
+                            }}>
+                              <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>←</span>
+                              <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
+                              <span style={{
+                                fontSize: 8, color: duty.color, fontWeight: 700,
+                                flexShrink: 0, whiteSpace: "nowrap", padding: "0 2px",
+                              }}>{duty.name}</span>
+                              <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
+                              <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>→</span>
+                            </div>
+                          )}
                         </td>
                       );
                     })}
