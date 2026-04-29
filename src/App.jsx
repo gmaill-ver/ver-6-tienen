@@ -490,7 +490,7 @@ function InputScreen({
               {DOW.map((d, i) => (
                 <div key={d} style={{
                   textAlign: "center", padding: "10px 0", fontSize: 11, fontWeight: 700,
-                  color: i === 0 || i === 6 ? "#93c5fd" : "rgba(255,255,255,0.35)",
+                  color: i === 0 ? "#f87171" : i === 6 ? "#93c5fd" : "rgba(255,255,255,0.35)",
                   borderBottom: "1px solid rgba(255,255,255,0.06)",
                 }}>{d}</div>
               ))}
@@ -528,7 +528,8 @@ function InputScreen({
                     <div style={{
                       fontSize: 12, fontWeight: isToday ? 900 : 600,
                       color: isToday ? "#818cf8"
-                        : isOff ? "#93c5fd"
+                        : dow === 0 || isHoliday_ ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.7)",
                       display: "flex", alignItems: "center", gap: 3,
                     }}>
@@ -910,7 +911,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                   <th key={day} onClick={() => setSelectedDate(dk)} style={{
                     minWidth: CELL_W, width: CELL_W,
                     padding: "4px 2px",
-                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isOff ? "rgba(147,197,253,0.18)" : "#131520",
+                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isOff ? "rgba(147,197,253,0.09)" : "#131520",
                     borderBottom: isSelected ? "2px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
                     borderRight: "1px solid rgba(255,255,255,0.04)",
                     textAlign: "center",
@@ -920,14 +921,16 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       fontSize: 10, fontWeight: isSelected || isToday ? 900 : 600,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : isOff ? "#93c5fd"
+                        : dow === 0 || isHoliday_ ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.5)",
                     }}>{day}</div>
                     <div style={{
                       fontSize: 9,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : isOff ? "#93c5fd"
+                        : dow === 0 || isHoliday_ ? "#f87171"
+                        : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.25)",
                     }}>{DOW[dow]}</div>
                   </th>
@@ -1037,7 +1040,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           height: 26,
                           background: isSelected ? "rgba(99,80,200,0.15)"
                             : isToday ? "rgba(99,102,241,0.08)"
-                            : isOff_ ? "rgba(147,197,253,0.13)"
+                            : isOff_ ? "rgba(147,197,253,0.06)"
                             : "transparent",
                         }}>
                           {st ? (
