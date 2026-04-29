@@ -26,6 +26,10 @@ const NOW = new Date();
 const todayKey = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, "0")}-${String(NOW.getDate()).padStart(2, "0")}`;
 const dateKey = (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 const isHoliday = (y, m, d) => HolidayJp.isHoliday(new Date(y, m - 1, d));
+const getHolidayName = (y, m, d) => {
+  const h = HolidayJp.between(new Date(y, m - 1, d), new Date(y, m - 1, d));
+  return h.length > 0 ? h[0].name : null;
+};
 
 function buildCalendar(year, month) {
   const first = new Date(year, month - 1, 1).getDay();
@@ -818,6 +822,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
   const year = viewYear; const month = viewMonth;
   const [filterTeam, setFilterTeam] = useState("ALL");
   const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const days = new Date(year, month, 0).getDate();
   const allDays = Array.from({ length: days }, (_, i) => i + 1);
@@ -830,6 +835,31 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
     const teamOrder = Object.fromEntries(teams.map((t, i) => [t.id, i]));
     return [...filtered].sort((a, b) => (teamOrder[a.teamId] ?? 99) - (teamOrder[b.teamId] ?? 99));
   }, [members, filterTeam, teams]);
+
+  const [selY, selM, selD] = selectedDate.split("-").map(Number);
+  const selDow = new Date(selY, selM - 1, selD).getDay();
+  const selHolidayName = useMemo(() => getHolidayName(selY, selM, selD), [selY, selM, selD]);
+
+  const drawerStatusCounts = useMemo(() => {
+    const counts = {};
+    let unentered = 0;
+    for (const mem of displayedMembers) {
+      const sid = attendanceData[String(mem.id)]?.[selectedDate];
+      if (sid) counts[sid] = (counts[sid] || 0) + 1;
+      else unentered++;
+    }
+    const result = statuses.filter(s => counts[s.id]).map(s => ({ ...s, count: counts[s.id] }));
+    if (unentered > 0) result.push({ id: "__", label: "未入力", color: "rgba(255,255,255,0.3)", count: unentered });
+    return result;
+  }, [selectedDate, displayedMembers, attendanceData, statuses]);
+
+  const membersByTeam = useMemo(() =>
+    teams.map(team => ({
+      team,
+      mems: displayedMembers.filter(m => m.teamId === team.id),
+    })).filter(g => g.mems.length > 0),
+    [teams, displayedMembers]
+  );
 
   // 表示対象メンバー（フィルタ適用）
   const targetMembers = filterTeam === "ALL"
@@ -908,7 +938,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                 const isHoliday_ = isHoliday(year, month, day);
                 const isOff = dow === 0 || dow === 6 || isHoliday_;
                 return (
-                  <th key={day} onClick={() => setSelectedDate(dk)} style={{
+                  <th key={day} onClick={() => { setSelectedDate(dk); setDrawerOpen(true); }} style={{
                     minWidth: CELL_W, width: CELL_W,
                     padding: "4px 2px",
                     background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isOff ? "rgba(147,197,253,0.09)" : "#131520",
@@ -1063,6 +1093,103 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
       {filterTeam !== "ALL" && (
         <TeamMemo teamId={filterTeam} year={year} month={month} />
       )}
+
+      {/* Overlay */}
+      {drawerOpen && (
+        <div onClick={() => setDrawerOpen(false)} style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.55)", zIndex: 100,
+        }} />
+      )}
+
+      {/* Bottom drawer */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: "#1a1c2e",
+        borderRadius: "20px 20px 0 0",
+        boxShadow: "0 -4px 40px rgba(0,0,0,0.5)",
+        zIndex: 101,
+        transform: drawerOpen ? "translateY(0)" : "translateY(100%)",
+        transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        maxHeight: "70vh",
+        display: "flex", flexDirection: "column",
+      }}>
+        {/* Handle bar */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 6px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)" }} />
+        </div>
+
+        {/* Date header */}
+        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>
+              {selM}月{selD}日（{DOW[selDow]}）
+            </span>
+            {selHolidayName && (
+              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>{selHolidayName}</span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+            {drawerStatusCounts.map(s => (
+              <span key={s.id} style={{
+                padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                background: s.id === "__" ? "rgba(255,255,255,0.06)" : hexToRgba(s.color, 0.18),
+                border: `1px solid ${s.id === "__" ? "rgba(255,255,255,0.1)" : hexToRgba(s.color, 0.4)}`,
+                color: s.id === "__" ? "rgba(255,255,255,0.35)" : s.color,
+              }}>
+                {s.label} {s.count}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Member list */}
+        <div style={{ overflowY: "auto", flex: 1, padding: "4px 20px 40px" }}>
+          {membersByTeam.map(({ team, mems }) => (
+            <div key={team.id}>
+              <div style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: "0.06em",
+                color: team.color, marginTop: 16, marginBottom: 4,
+              }}>{team.name}</div>
+              {mems.map(mem => {
+                const sid = attendanceData[String(mem.id)]?.[selectedDate];
+                const st = sid ? getSt(sid) : null;
+                const duties = (dutiesData[String(mem.id)] || [])
+                  .filter(d => d.start <= selectedDate && d.end >= selectedDate);
+                return (
+                  <div key={mem.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  }}>
+                    <div style={{ width: 3, height: 20, borderRadius: 2, background: team.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>
+                        {mem.name}
+                        {mem.role && (
+                          <span style={{ fontSize: 9, color: "#a78bfa", marginLeft: 5 }}>{mem.role}</span>
+                        )}
+                      </div>
+                      {duties.map(d => (
+                        <div key={d.id} style={{ fontSize: 10, color: d.color, marginTop: 1 }}>{d.name}</div>
+                      ))}
+                    </div>
+                    {st ? (
+                      <span style={{
+                        padding: "3px 12px", borderRadius: 6, flexShrink: 0,
+                        background: st.bg, border: `1px solid ${st.border}`,
+                        color: st.color, fontSize: 12, fontWeight: 800,
+                      }}>{st.label}</span>
+                    ) : (
+                      <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, flexShrink: 0 }}>未入力</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
