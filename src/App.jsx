@@ -910,7 +910,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                   <th key={day} onClick={() => setSelectedDate(dk)} style={{
                     minWidth: CELL_W, width: CELL_W,
                     padding: "4px 2px",
-                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : "#131520",
+                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isRed ? "rgba(248,113,113,0.12)" : dow === 6 ? "rgba(147,197,253,0.09)" : "#131520",
                     borderBottom: isSelected ? "2px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
                     borderRight: "1px solid rgba(255,255,255,0.04)",
                     textAlign: "center",
@@ -1030,6 +1030,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       const isSelected = dk === selectedDate;
                       const isWknd     = dow === 0 || dow === 6;
                       const isHoliday_ = isHoliday(year, month, day);
+                      const isRed_     = dow === 0 || isHoliday_;
                       return (
                         <td key={day} style={{
                           textAlign: "center", padding: "4px 2px",
@@ -1038,7 +1039,9 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           height: 26,
                           background: isSelected ? "rgba(99,80,200,0.15)"
                             : isToday ? "rgba(99,102,241,0.08)"
-                            : (isWknd || isHoliday_) ? "rgba(255,255,255,0.015)" : "transparent",
+                            : isRed_ ? "rgba(248,113,113,0.08)"
+                            : dow === 6 ? "rgba(147,197,253,0.06)"
+                            : "transparent",
                         }}>
                           {st ? (
                             <span style={{ color: st.color, fontSize: 10, fontWeight: 800 }}>{st.label}</span>
