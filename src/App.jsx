@@ -490,7 +490,7 @@ function InputScreen({
               {DOW.map((d, i) => (
                 <div key={d} style={{
                   textAlign: "center", padding: "10px 0", fontSize: 11, fontWeight: 700,
-                  color: i === 0 ? "#f87171" : i === 6 ? "#93c5fd" : "rgba(255,255,255,0.35)",
+                  color: i === 0 || i === 6 ? "#93c5fd" : "rgba(255,255,255,0.35)",
                   borderBottom: "1px solid rgba(255,255,255,0.06)",
                 }}>{d}</div>
               ))}
@@ -506,7 +506,7 @@ function InputScreen({
                 const dow       = idx % 7;
                 const isWknd    = dow === 0 || dow === 6;
                 const isHoliday_ = isHoliday(year, month, day);
-                const isRed     = dow === 0 || isHoliday_;
+                const isOff     = isWknd || isHoliday_;
                 const canTap    = activeStatus || eraseMode;
 
                 return (
@@ -518,7 +518,7 @@ function InputScreen({
                       borderRight: "1px solid rgba(255,255,255,0.04)",
                       borderBottom: "1px solid rgba(255,255,255,0.04)",
                       background: isToday ? "rgba(99,102,241,0.12)"
-                        : (isWknd || isHoliday_) ? "rgba(255,255,255,0.015)" : "transparent",
+                        : isOff ? "rgba(147,197,253,0.07)" : "transparent",
                       cursor: canTap ? "pointer" : "default",
                       display: "flex", flexDirection: "column", gap: 4,
                       transition: "background 0.1s",
@@ -528,7 +528,7 @@ function InputScreen({
                     <div style={{
                       fontSize: 12, fontWeight: isToday ? 900 : 600,
                       color: isToday ? "#818cf8"
-                        : isRed ? "#f87171" : dow === 6 ? "#93c5fd"
+                        : isOff ? "#93c5fd"
                         : "rgba(255,255,255,0.7)",
                       display: "flex", alignItems: "center", gap: 3,
                     }}>
@@ -905,12 +905,12 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                 const isToday = dk === todayKey;
                 const isSelected = dk === selectedDate;
                 const isHoliday_ = isHoliday(year, month, day);
-                const isRed = dow === 0 || isHoliday_;
+                const isOff = dow === 0 || dow === 6 || isHoliday_;
                 return (
                   <th key={day} onClick={() => setSelectedDate(dk)} style={{
                     minWidth: CELL_W, width: CELL_W,
                     padding: "4px 2px",
-                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isRed ? "rgba(248,113,113,0.12)" : dow === 6 ? "rgba(147,197,253,0.09)" : "#131520",
+                    background: isSelected ? "#2d1f6e" : isToday ? "#1e2040" : isOff ? "rgba(147,197,253,0.18)" : "#131520",
                     borderBottom: isSelected ? "2px solid #818cf8" : "1px solid rgba(255,255,255,0.1)",
                     borderRight: "1px solid rgba(255,255,255,0.04)",
                     textAlign: "center",
@@ -920,16 +920,14 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       fontSize: 10, fontWeight: isSelected || isToday ? 900 : 600,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : isRed ? "#f87171"
-                        : dow === 6 ? "#93c5fd"
+                        : isOff ? "#93c5fd"
                         : "rgba(255,255,255,0.5)",
                     }}>{day}</div>
                     <div style={{
                       fontSize: 9,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : isRed ? "#f87171"
-                        : dow === 6 ? "#93c5fd"
+                        : isOff ? "#93c5fd"
                         : "rgba(255,255,255,0.25)",
                     }}>{DOW[dow]}</div>
                   </th>
@@ -1030,7 +1028,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       const isSelected = dk === selectedDate;
                       const isWknd     = dow === 0 || dow === 6;
                       const isHoliday_ = isHoliday(year, month, day);
-                      const isRed_     = dow === 0 || isHoliday_;
+                      const isOff_     = isWknd || isHoliday_;
                       return (
                         <td key={day} style={{
                           textAlign: "center", padding: "4px 2px",
@@ -1039,8 +1037,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           height: 26,
                           background: isSelected ? "rgba(99,80,200,0.15)"
                             : isToday ? "rgba(99,102,241,0.08)"
-                            : isRed_ ? "rgba(248,113,113,0.08)"
-                            : dow === 6 ? "rgba(147,197,253,0.06)"
+                            : isOff_ ? "rgba(147,197,253,0.13)"
                             : "transparent",
                         }}>
                           {st ? (
