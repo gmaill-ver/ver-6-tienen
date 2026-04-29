@@ -362,6 +362,30 @@ function InputScreen({
     LS.set(`defaultBoardFilter_${selectedMember}`, val);
   };
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
+
+  // 教務予定ごとに固定の行番号を割り当て（開始日順でレイヤーを組む）
+  const dutyLayerMap = useMemo(() => {
+    const duties = [...(dutiesData[String(selectedMember)] || [])].sort((a, b) => a.start.localeCompare(b.start));
+    const layers = [];
+    const map = {};
+    for (const duty of duties) {
+      let placed = false;
+      for (let i = 0; i < layers.length; i++) {
+        if (!layers[i].some(d => duty.start <= d.end && duty.end >= d.start)) {
+          layers[i].push(duty);
+          map[duty.id] = i;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        map[duty.id] = layers.length;
+        layers.push([duty]);
+      }
+    }
+    return map;
+  }, [selectedMember, dutiesData]);
+
   const member = members.find(m => m.id === selectedMember);
   const myData = selectedMember ? (attendanceData[String(selectedMember)] || {}) : {};
   const team   = member ? getTeam(member.teamId) : null;
@@ -569,6 +593,7 @@ function InputScreen({
                     </div>
                     {(dutiesData[String(selectedMember)] || [])
                       .filter(d => d.start <= dk && d.end >= dk)
+                      .sort((a, b) => (dutyLayerMap[a.id] ?? 0) - (dutyLayerMap[b.id] ?? 0))
                       .map(duty => {
                         const isStart  = duty.start === dk;
                         const isSingle = isStart && duty.end === dk;
