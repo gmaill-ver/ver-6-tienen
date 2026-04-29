@@ -569,18 +569,31 @@ function InputScreen({
                     </div>
                     {(dutiesData[String(selectedMember)] || [])
                       .filter(d => d.start <= dk && d.end >= dk)
-                      .map(duty => (
-                        <div key={duty.id} style={{
-                          background: hexToRgba(duty.color, 0.2),
-                          border: `1px solid ${hexToRgba(duty.color, 0.4)}`,
-                          borderRadius: 3, padding: "1px 3px",
-                          fontSize: 8, color: duty.color, fontWeight: 700,
-                          textAlign: "center", overflow: "hidden",
-                          whiteSpace: "nowrap", textOverflow: "ellipsis",
-                        }}>
-                          {duty.start === dk ? duty.name : "─"}
-                        </div>
-                      ))
+                      .map(duty => {
+                        const isStart  = duty.start === dk;
+                        const isSingle = isStart && duty.end === dk;
+                        return (
+                          <div key={duty.id} style={{
+                            display: "flex", alignItems: "center",
+                            marginLeft: -6, marginRight: -6, height: 14, overflow: "hidden",
+                          }}>
+                            {isStart ? (
+                              <>
+                                <div style={{ width: 4, height: 2, background: duty.color, flexShrink: 0 }} />
+                                <span style={{
+                                  fontSize: 8, color: duty.color, fontWeight: 700,
+                                  whiteSpace: "nowrap", padding: "0 2px", flexShrink: 0,
+                                }}>{duty.name}</span>
+                              </>
+                            ) : (
+                              <div style={{ flex: 1, height: 2, background: duty.color }} />
+                            )}
+                            {!isSingle && (
+                              <div style={{ flex: 1, height: 2, background: duty.color }} />
+                            )}
+                          </div>
+                        );
+                      })
                     }
                     {st && (
                       <div style={{
