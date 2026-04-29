@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import AuthScreen from "./AuthScreen";
+import * as HolidayJp from "@holiday-jp/holiday_jp";
 
 // ── Utils ─────────────────────────────────────────────────────────
 const LS = {
@@ -24,6 +25,7 @@ const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 const NOW = new Date();
 const todayKey = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, "0")}-${String(NOW.getDate()).padStart(2, "0")}`;
 const dateKey = (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const isHoliday = (y, m, d) => HolidayJp.isHoliday(new Date(y, m - 1, d));
 
 function buildCalendar(year, month) {
   const first = new Date(year, month - 1, 1).getDay();
@@ -500,10 +502,12 @@ function InputScreen({
                 const dk      = dateKey(year, month, day);
                 const status  = myData[dk];
                 const st      = status ? getSt(status) : null;
-                const isToday = dk === todayKey;
-                const dow     = idx % 7;
-                const isWknd  = dow === 0 || dow === 6;
-                const canTap  = activeStatus || eraseMode;
+                const isToday   = dk === todayKey;
+                const dow       = idx % 7;
+                const isWknd    = dow === 0 || dow === 6;
+                const isHoliday_ = isHoliday(year, month, day);
+                const isRed     = dow === 0 || isHoliday_;
+                const canTap    = activeStatus || eraseMode;
 
                 return (
                   <div
@@ -514,7 +518,7 @@ function InputScreen({
                       borderRight: "1px solid rgba(255,255,255,0.04)",
                       borderBottom: "1px solid rgba(255,255,255,0.04)",
                       background: isToday ? "rgba(99,102,241,0.12)"
-                        : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
+                        : (isWknd || isHoliday_) ? "rgba(255,255,255,0.015)" : "transparent",
                       cursor: canTap ? "pointer" : "default",
                       display: "flex", flexDirection: "column", gap: 4,
                       transition: "background 0.1s",
@@ -524,7 +528,7 @@ function InputScreen({
                     <div style={{
                       fontSize: 12, fontWeight: isToday ? 900 : 600,
                       color: isToday ? "#818cf8"
-                        : dow === 0 ? "#f87171" : dow === 6 ? "#93c5fd"
+                        : isRed ? "#f87171" : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.7)",
                       display: "flex", alignItems: "center", gap: 3,
                     }}>
@@ -900,6 +904,8 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                 const dow  = new Date(year, month - 1, day).getDay();
                 const isToday = dk === todayKey;
                 const isSelected = dk === selectedDate;
+                const isHoliday_ = isHoliday(year, month, day);
+                const isRed = dow === 0 || isHoliday_;
                 return (
                   <th key={day} onClick={() => setSelectedDate(dk)} style={{
                     minWidth: CELL_W, width: CELL_W,
@@ -914,7 +920,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       fontSize: 10, fontWeight: isSelected || isToday ? 900 : 600,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : dow === 0 ? "#f87171"
+                        : isRed ? "#f87171"
                         : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.5)",
                     }}>{day}</div>
@@ -922,7 +928,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       fontSize: 9,
                       color: isSelected ? "#c4b5fd"
                         : isToday ? "#818cf8"
-                        : dow === 0 ? "#f87171"
+                        : isRed ? "#f87171"
                         : dow === 6 ? "#93c5fd"
                         : "rgba(255,255,255,0.25)",
                     }}>{DOW[dow]}</div>
@@ -1023,6 +1029,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       const isToday    = dk === todayKey;
                       const isSelected = dk === selectedDate;
                       const isWknd     = dow === 0 || dow === 6;
+                      const isHoliday_ = isHoliday(year, month, day);
                       return (
                         <td key={day} style={{
                           textAlign: "center", padding: "4px 2px",
@@ -1031,7 +1038,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                           height: 26,
                           background: isSelected ? "rgba(99,80,200,0.15)"
                             : isToday ? "rgba(99,102,241,0.08)"
-                            : isWknd ? "rgba(255,255,255,0.015)" : "transparent",
+                            : (isWknd || isHoliday_) ? "rgba(255,255,255,0.015)" : "transparent",
                         }}>
                           {st ? (
                             <span style={{ color: st.color, fontSize: 10, fontWeight: 800 }}>{st.label}</span>
