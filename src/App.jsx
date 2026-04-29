@@ -364,7 +364,7 @@ function InputScreen({
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
 
   // 教務予定ごとに固定の行番号を割り当て（開始日順でレイヤーを組む）
-  const dutyLayerMap = useMemo(() => {
+  const { dutyLayerMap, totalDutyLayers } = useMemo(() => {
     const duties = [...(dutiesData[String(selectedMember)] || [])].sort((a, b) => a.start.localeCompare(b.start));
     const layers = [];
     const map = {};
@@ -383,7 +383,7 @@ function InputScreen({
         layers.push([duty]);
       }
     }
-    return map;
+    return { dutyLayerMap: map, totalDutyLayers: layers.length };
   }, [selectedMember, dutiesData]);
 
   const member = members.find(m => m.id === selectedMember);
@@ -591,36 +591,35 @@ function InputScreen({
                     }}>
                       {day}
                     </div>
-                    {(dutiesData[String(selectedMember)] || [])
-                      .filter(d => d.start <= dk && d.end >= dk)
-                      .sort((a, b) => (dutyLayerMap[a.id] ?? 0) - (dutyLayerMap[b.id] ?? 0))
-                      .map(duty => {
-                        const isStart  = duty.start === dk;
-                        const isSingle = isStart && duty.end === dk;
-                        return (
-                          <div key={duty.id} style={{
-                            display: "flex", alignItems: "center",
-                            height: 12, flexShrink: 0,
-                            marginLeft: isStart ? 0 : -6,
-                            marginRight: isSingle ? 0 : -6,
-                          }}>
-                            {isStart ? (
-                              <>
-                                <span style={{
-                                  fontSize: 8, color: duty.color, fontWeight: 700,
-                                  whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1,
-                                }}>{duty.name}</span>
-                                {!isSingle && (
-                                  <div style={{ flex: 1, height: 2, background: duty.color, marginLeft: 2 }} />
-                                )}
-                              </>
-                            ) : (
-                              <div style={{ flex: 1, height: 2, background: duty.color }} />
-                            )}
-                          </div>
-                        );
-                      })
-                    }
+                    {Array.from({ length: totalDutyLayers }, (_, layerIdx) => {
+                      const duty = (dutiesData[String(selectedMember)] || [])
+                        .find(d => dutyLayerMap[d.id] === layerIdx && d.start <= dk && d.end >= dk);
+                      if (!duty) return <div key={layerIdx} style={{ height: 12, flexShrink: 0 }} />;
+                      const isStart  = duty.start === dk;
+                      const isSingle = isStart && duty.end === dk;
+                      return (
+                        <div key={layerIdx} style={{
+                          display: "flex", alignItems: "center",
+                          height: 12, flexShrink: 0,
+                          marginLeft: isStart ? 0 : -6,
+                          marginRight: isSingle ? 0 : -6,
+                        }}>
+                          {isStart ? (
+                            <>
+                              <span style={{
+                                fontSize: 8, color: duty.color, fontWeight: 700,
+                                whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1,
+                              }}>{duty.name}</span>
+                              {!isSingle && (
+                                <div style={{ flex: 1, height: 2, background: duty.color, marginLeft: 2 }} />
+                              )}
+                            </>
+                          ) : (
+                            <div style={{ flex: 1, height: 2, background: duty.color }} />
+                          )}
+                        </div>
+                      );
+                    })}
                     {st && (
                       <div style={{
                         color: st.color, fontSize: 11, fontWeight: 800,
