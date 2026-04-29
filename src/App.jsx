@@ -99,7 +99,8 @@ export default function App() {
 
 function MainApp({ user }) {
   const [screen, setScreen] = useState("home");
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(() => LS.get("lastMember", null));
+  const setAndSaveMember = (id) => { setSelectedMember(id); if (id) LS.set("lastMember", id); };
   const [loading, setLoading] = useState(true);
   const [teams,    setTeams]    = useState(DEFAULT_TEAMS);
   const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
@@ -220,7 +221,7 @@ function MainApp({ user }) {
         <InputScreen
           {...ctx}
           selectedMember={selectedMember}
-          setSelectedMember={setSelectedMember}
+          setSelectedMember={setAndSaveMember}
           onBack={() => setScreen("home")}
         />
       )}
