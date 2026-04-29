@@ -823,7 +823,6 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
   const [filterTeam, setFilterTeam] = useState("ALL");
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
   const days = new Date(year, month, 0).getDate();
   const allDays = Array.from({ length: days }, (_, i) => i + 1);
 
