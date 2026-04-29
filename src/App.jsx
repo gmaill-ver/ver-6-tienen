@@ -574,22 +574,25 @@ function InputScreen({
                         const isSingle = isStart && duty.end === dk;
                         return (
                           <div key={duty.id} style={{
+                            position: "relative", height: 12,
                             display: "flex", alignItems: "center",
-                            marginLeft: -6, marginRight: -6, height: 14, overflow: "hidden",
                           }}>
-                            {isStart ? (
-                              <>
-                                <div style={{ width: 4, height: 2, background: duty.color, flexShrink: 0 }} />
-                                <span style={{
-                                  fontSize: 8, color: duty.color, fontWeight: 700,
-                                  whiteSpace: "nowrap", padding: "0 2px", flexShrink: 0,
-                                }}>{duty.name}</span>
-                              </>
-                            ) : (
-                              <div style={{ flex: 1, height: 2, background: duty.color }} />
-                            )}
                             {!isSingle && (
-                              <div style={{ flex: 1, height: 2, background: duty.color }} />
+                              <div style={{
+                                position: "absolute",
+                                left: isStart ? 0 : -6,
+                                right: -6,
+                                top: "50%", transform: "translateY(-50%)",
+                                height: 2, background: duty.color,
+                              }} />
+                            )}
+                            {isStart && (
+                              <span style={{
+                                position: "relative", zIndex: 1,
+                                fontSize: 8, color: duty.color, fontWeight: 700,
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                maxWidth: "100%",
+                              }}>{duty.name}</span>
                             )}
                           </div>
                         );
