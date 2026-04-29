@@ -773,7 +773,7 @@ function DutyForm({ year, month, initial, onSave, onCancel }) {
   const [endMonth,     setEndMonth]     = useState(initial ? parseInt(initial.end.slice(5, 7))   : month);
   const [endDay,       setEndDay]       = useState(initial ? parseInt(initial.end.slice(8))      : 1);
   const [color,        setColor]        = useState(initial?.color || DUTY_COLORS[0]);
-  const [skipWeekends, setSkipWeekends] = useState(initial?.skipWeekends ?? false);
+  const [skipWeekends, setSkipWeekends] = useState(initial?.skipWeekends ?? true);
 
   const isEdit = !!initial;
   const yearOptions = [...new Set([year, year + 1, startYear, endYear])].sort();
@@ -1317,6 +1317,7 @@ function TeamMemo({ teamId, year, month }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
+    setText(LS.get(lsKey, ""));
     const unsub = onSnapshot(doc(db, "memos", memoKey), snap => {
       const val = snap.exists() ? (snap.data().text || "") : "";
       LS.set(lsKey, val);
