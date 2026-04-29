@@ -225,7 +225,7 @@ function MainApp({ user }) {
         />
       )}
       {screen === "board" && (
-        <BoardScreen {...ctx} onBack={() => setScreen("home")} />
+        <BoardScreen {...ctx} selectedMember={selectedMember} onBack={() => setScreen("home")} />
       )}
       {screen === "settings" && (
         <SettingsScreen
@@ -351,6 +351,16 @@ function InputScreen({
   const year = viewYear; const month = viewMonth;
   const [activeStatus, setActiveStatus] = useState(null); // 選択中カテゴリ（null=消去モード以外）
   const [eraseMode, setEraseMode] = useState(false);
+  const [defaultFilter, setDefaultFilter] = useState(() =>
+    LS.get(`defaultBoardFilter_${selectedMember}`, "ALL")
+  );
+  useEffect(() => {
+    setDefaultFilter(LS.get(`defaultBoardFilter_${selectedMember}`, "ALL"));
+  }, [selectedMember]);
+  const handleDefaultFilterChange = (val) => {
+    setDefaultFilter(val);
+    LS.set(`defaultBoardFilter_${selectedMember}`, val);
+  };
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
   const member = members.find(m => m.id === selectedMember);
   const myData = selectedMember ? (attendanceData[String(selectedMember)] || {}) : {};
@@ -430,11 +440,29 @@ function InputScreen({
             borderRadius: 10, padding: "10px 14px", marginBottom: 16,
           }}>
             <div>
-              <span style={{ fontSize: 15, fontWeight: 800 }}>{member.name}</span>
-              <span style={{
-                marginLeft: 8, fontSize: 10, color: team.accent,
-                background: `${team.color}22`, padding: "2px 8px", borderRadius: 5,
-              }}>{team.name}</span>
+              <div>
+                <span style={{ fontSize: 15, fontWeight: 800 }}>{member.name}</span>
+                <span style={{
+                  marginLeft: 8, fontSize: 10, color: team.accent,
+                  background: `${team.color}22`, padding: "2px 8px", borderRadius: 5,
+                }}>{team.name}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>ボード初期表示</span>
+                <select
+                  value={defaultFilter}
+                  onChange={e => handleDefaultFilterChange(e.target.value)}
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 6, padding: "2px 6px",
+                    color: "#e2e8f0", fontSize: 11, cursor: "pointer", outline: "none",
+                  }}
+                >
+                  <option value="ALL">全班</option>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
             </div>
             <button onClick={() => setSelectedMember(null)} style={{
               background: "rgba(255,255,255,0.07)",
@@ -818,9 +846,11 @@ function buildDutyLayers(dutiesData, memberId, year, month, totalDays) {
 }
 
 // ── Board Screen ──────────────────────────────────────────────────
-function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, dutiesData, members, teams, statuses, getTeam, getSt, onBack }) {
+function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceData, dutiesData, members, teams, statuses, getTeam, getSt, onBack, selectedMember }) {
   const year = viewYear; const month = viewMonth;
-  const [filterTeam, setFilterTeam] = useState("ALL");
+  const [filterTeam, setFilterTeam] = useState(() =>
+    LS.get(`defaultBoardFilter_${selectedMember}`, "ALL")
+  );
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const days = new Date(year, month, 0).getDate();
