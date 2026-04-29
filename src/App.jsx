@@ -595,6 +595,9 @@ function InputScreen({
                       const duty = (dutiesData[String(selectedMember)] || [])
                         .find(d => dutyLayerMap[d.id] === layerIdx && d.start <= dk && d.end >= dk);
                       if (!duty) return <div key={layerIdx} style={{ height: 12, flexShrink: 0 }} />;
+                      const cellDow = new Date(year, month - 1, day).getDay();
+                      const isOffDay = cellDow === 0 || cellDow === 6 || isHoliday(year, month, day);
+                      if (duty.skipWeekends && isOffDay) return <div key={layerIdx} style={{ height: 12, flexShrink: 0 }} />;
                       const isStart  = duty.start === dk;
                       const isSingle = isStart && duty.end === dk;
                       return (
@@ -716,9 +719,12 @@ function DutySection({ year, month, memberId, dutiesData, saveDuties }) {
               }} />
               <span style={{ fontSize: 12, fontWeight: 600 }}>{duty.name}</span>
               <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                {parseInt(duty.start.slice(8))}日
-                {duty.start !== duty.end && ` 〜 ${parseInt(duty.end.slice(8))}日`}
+                {`${parseInt(duty.start.slice(5,7))}/${parseInt(duty.start.slice(8))}`}
+                {duty.start !== duty.end && ` 〜 ${parseInt(duty.end.slice(5,7))}/${parseInt(duty.end.slice(8))}`}
               </span>
+              {duty.skipWeekends && (
+                <span style={{ fontSize: 9, color: "#818cf8", background: "rgba(99,102,241,0.15)", padding: "1px 5px", borderRadius: 4 }}>土日除</span>
+              )}
             </div>
             <div style={{ display: "flex", gap: 5 }}>
               <button onClick={() => setEditingId(editingId === duty.id ? undefined : duty.id)} style={{
@@ -759,21 +765,29 @@ function DutySection({ year, month, memberId, dutiesData, saveDuties }) {
 }
 
 function DutyForm({ year, month, initial, onSave, onCancel }) {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const [name,     setName]     = useState(initial?.name  || "");
-  const [startDay, setStartDay] = useState(initial ? parseInt(initial.start.slice(8)) : 1);
-  const [endDay,   setEndDay]   = useState(initial ? parseInt(initial.end.slice(8))   : 1);
-  const [color,    setColor]    = useState(initial?.color || DUTY_COLORS[0]);
+  const [name,         setName]         = useState(initial?.name  || "");
+  const [startYear,    setStartYear]    = useState(initial ? parseInt(initial.start.slice(0, 4)) : year);
+  const [startMonth,   setStartMonth]   = useState(initial ? parseInt(initial.start.slice(5, 7)) : month);
+  const [startDay,     setStartDay]     = useState(initial ? parseInt(initial.start.slice(8))    : 1);
+  const [endYear,      setEndYear]      = useState(initial ? parseInt(initial.end.slice(0, 4))   : year);
+  const [endMonth,     setEndMonth]     = useState(initial ? parseInt(initial.end.slice(5, 7))   : month);
+  const [endDay,       setEndDay]       = useState(initial ? parseInt(initial.end.slice(8))      : 1);
+  const [color,        setColor]        = useState(initial?.color || DUTY_COLORS[0]);
+  const [skipWeekends, setSkipWeekends] = useState(initial?.skipWeekends ?? false);
 
-  const dayOptions = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const isEdit = !!initial;
+  const yearOptions = [...new Set([year, year + 1, startYear, endYear])].sort();
+  const daysInStart = new Date(startYear, startMonth, 0).getDate();
+  const daysInEnd   = new Date(endYear,   endMonth,   0).getDate();
+  const selStyle    = { ...inputStyle, width: "auto", padding: "6px 8px", fontSize: 12 };
 
   const save = () => {
     if (!name.trim()) return;
-    const s = Math.min(startDay, endDay);
-    const e = Math.max(startDay, endDay);
-    onSave({ id: initial?.id || Date.now(), name: name.trim(), start: dateKey(year, month, s), end: dateKey(year, month, e), color });
-    if (!isEdit) { setName(""); }
+    const startDk = dateKey(startYear, startMonth, startDay);
+    const endDk   = dateKey(endYear, endMonth, endDay);
+    if (endDk < startDk) return;
+    onSave({ id: initial?.id || Date.now(), name: name.trim(), color, skipWeekends, start: startDk, end: endDk });
+    if (!isEdit) setName("");
   };
 
   return (
@@ -786,29 +800,44 @@ function DutyForm({ year, month, initial, onSave, onCancel }) {
         {isEdit ? "教務予定を編集" : "教務予定を追加"}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <input
-          style={inputStyle}
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="教務名（例: 研修、出張）"
-        />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <select
-            style={{ ...inputStyle, flex: 1 }}
-            value={startDay}
-            onChange={e => setStartDay(Number(e.target.value))}
-          >
-            {dayOptions.map(d => <option key={d} value={d}>{d}日</option>)}
-          </select>
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, flexShrink: 0 }}>〜</span>
-          <select
-            style={{ ...inputStyle, flex: 1 }}
-            value={endDay}
-            onChange={e => setEndDay(Number(e.target.value))}
-          >
-            {dayOptions.map(d => <option key={d} value={d}>{d}日</option>)}
-          </select>
+        <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="教務名（例: 研修、出張）" />
+
+        <div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>開始日</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            <select style={selStyle} value={startYear} onChange={e => setStartYear(Number(e.target.value))}>
+              {yearOptions.map(y => <option key={y} value={y}>{y}年</option>)}
+            </select>
+            <select style={selStyle} value={startMonth} onChange={e => { setStartMonth(Number(e.target.value)); setStartDay(1); }}>
+              {Array.from({ length: 12 }, (_, i) => <option key={i+1} value={i+1}>{i+1}月</option>)}
+            </select>
+            <select style={selStyle} value={startDay} onChange={e => setStartDay(Number(e.target.value))}>
+              {Array.from({ length: daysInStart }, (_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
+            </select>
+          </div>
         </div>
+
+        <div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>終了日</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            <select style={selStyle} value={endYear} onChange={e => setEndYear(Number(e.target.value))}>
+              {yearOptions.map(y => <option key={y} value={y}>{y}年</option>)}
+            </select>
+            <select style={selStyle} value={endMonth} onChange={e => { setEndMonth(Number(e.target.value)); setEndDay(1); }}>
+              {Array.from({ length: 12 }, (_, i) => <option key={i+1} value={i+1}>{i+1}月</option>)}
+            </select>
+            <select style={selStyle} value={endDay} onChange={e => setEndDay(Number(e.target.value))}>
+              {Array.from({ length: daysInEnd }, (_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
+            </select>
+          </div>
+        </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
+          <input type="checkbox" checked={skipWeekends} onChange={e => setSkipWeekends(e.target.checked)}
+            style={{ accentColor: "#818cf8", width: 15, height: 15 }} />
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>土日・祝日を除く</span>
+        </label>
+
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {DUTY_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)} style={{
@@ -819,6 +848,7 @@ function DutyForm({ year, month, initial, onSave, onCancel }) {
             }} />
           ))}
         </div>
+
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={save} style={{
             background: "rgba(99,102,241,0.25)", border: "1px solid rgba(99,102,241,0.5)",
@@ -875,7 +905,27 @@ function buildDutyLayers(dutiesData, memberId, year, month, totalDays) {
     for (const duty of [...layerDuties].sort((a, b) => a.s - b.s)) {
       const s = Math.max(duty.s, cur);
       if (s > cur) cells.push({ type: "empty", span: s - cur });
-      cells.push({ type: "duty", duty, span: duty.e - s + 1 });
+      if (duty.skipWeekends) {
+        let d = s;
+        while (d <= duty.e) {
+          const dow = new Date(year, month - 1, d).getDay();
+          if (dow === 0 || dow === 6 || isHoliday(year, month, d)) {
+            cells.push({ type: "empty", span: 1 });
+            d++;
+          } else {
+            let segEnd = d;
+            while (segEnd + 1 <= duty.e) {
+              const nDow = new Date(year, month - 1, segEnd + 1).getDay();
+              if (nDow === 0 || nDow === 6 || isHoliday(year, month, segEnd + 1)) break;
+              segEnd++;
+            }
+            cells.push({ type: "duty", duty, span: segEnd - d + 1 });
+            d = segEnd + 1;
+          }
+        }
+      } else {
+        cells.push({ type: "duty", duty, span: duty.e - s + 1 });
+      }
       cur = duty.e + 1;
     }
     if (cur <= totalDays) cells.push({ type: "empty", span: totalDays - cur + 1 });
