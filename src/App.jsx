@@ -574,25 +574,23 @@ function InputScreen({
                         const isSingle = isStart && duty.end === dk;
                         return (
                           <div key={duty.id} style={{
-                            position: "relative", height: 12,
                             display: "flex", alignItems: "center",
+                            height: 12, flexShrink: 0,
+                            marginLeft: isStart ? 0 : -6,
+                            marginRight: isSingle ? 0 : -6,
                           }}>
-                            {!isSingle && (
-                              <div style={{
-                                position: "absolute",
-                                left: isStart ? 0 : -6,
-                                right: -6,
-                                top: "50%", transform: "translateY(-50%)",
-                                height: 2, background: duty.color,
-                              }} />
-                            )}
-                            {isStart && (
-                              <span style={{
-                                position: "relative", zIndex: 1,
-                                fontSize: 8, color: duty.color, fontWeight: 700,
-                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                                maxWidth: "100%",
-                              }}>{duty.name}</span>
+                            {isStart ? (
+                              <>
+                                <span style={{
+                                  fontSize: 8, color: duty.color, fontWeight: 700,
+                                  whiteSpace: "nowrap", flexShrink: 0, lineHeight: 1,
+                                }}>{duty.name}</span>
+                                {!isSingle && (
+                                  <div style={{ flex: 1, height: 2, background: duty.color, marginLeft: 2 }} />
+                                )}
+                              </>
+                            ) : (
+                              <div style={{ flex: 1, height: 2, background: duty.color }} />
                             )}
                           </div>
                         );
