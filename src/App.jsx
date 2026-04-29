@@ -1174,11 +1174,7 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       ))}
                     </div>
                     {st ? (
-                      <span style={{
-                        padding: "3px 12px", borderRadius: 6, flexShrink: 0,
-                        background: st.bg, border: `1px solid ${st.border}`,
-                        color: st.color, fontSize: 12, fontWeight: 800,
-                      }}>{st.label}</span>
+                      <span style={{ color: st.color, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{st.label}</span>
                     ) : (
                       <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, flexShrink: 0 }}>未入力</span>
                     )}
