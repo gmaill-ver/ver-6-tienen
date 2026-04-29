@@ -764,7 +764,7 @@ function DutyForm({ year, month, initial, onSave, onCancel }) {
 }
 
 // ── Build duty cells for board row ────────────────────────────────
-function buildDutyCells(dutiesData, memberId, year, month, totalDays) {
+function buildDutyLayers(dutiesData, memberId, year, month, totalDays) {
   const yStr = String(year);
   const mStr = String(month).padStart(2, "0");
   const firstDk = `${yStr}-${mStr}-01`;
@@ -779,17 +779,33 @@ function buildDutyCells(dutiesData, memberId, year, month, totalDays) {
     }))
     .sort((a, b) => a.s - b.s);
 
-  const cells = [];
-  let cur = 1;
+  if (duties.length === 0) return [[{ type: "empty", span: totalDays }]];
+
+  const layers = [];
   for (const duty of duties) {
-    if (duty.e < cur) continue;
-    const s = Math.max(duty.s, cur);
-    if (s > cur) cells.push({ type: "empty", span: s - cur });
-    cells.push({ type: "duty", duty, span: duty.e - s + 1 });
-    cur = duty.e + 1;
+    let placed = false;
+    for (const layer of layers) {
+      if (!layer.some(d => duty.s <= d.e && duty.e >= d.s)) {
+        layer.push(duty);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) layers.push([duty]);
   }
-  if (cur <= totalDays) cells.push({ type: "empty", span: totalDays - cur + 1 });
-  return cells;
+
+  return layers.map(layerDuties => {
+    const cells = [];
+    let cur = 1;
+    for (const duty of [...layerDuties].sort((a, b) => a.s - b.s)) {
+      const s = Math.max(duty.s, cur);
+      if (s > cur) cells.push({ type: "empty", span: s - cur });
+      cells.push({ type: "duty", duty, span: duty.e - s + 1 });
+      cur = duty.e + 1;
+    }
+    if (cur <= totalDays) cells.push({ type: "empty", span: totalDays - cur + 1 });
+    return cells;
+  });
 }
 
 // ── Board Screen ──────────────────────────────────────────────────
@@ -918,81 +934,87 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
           <tbody>
             {displayedMembers.map(mem => {
               const t = getTeam(mem.teamId);
-              const dutyCells = buildDutyCells(dutiesData, mem.id, year, month, days);
-              const hasDuties = dutyCells.some(c => c.type === "duty");
+              const dutyLayers = buildDutyLayers(dutiesData, mem.id, year, month, days);
+              const hasDuties = dutyLayers.some(layer => layer.some(c => c.type === "duty"));
+
+              const renderDutyCells = (cells) => cells.map((cell, i) => {
+                if (cell.type === "empty") {
+                  return (
+                    <td key={i} colSpan={cell.span} style={{
+                      background: "#0d0f18",
+                      height: 20,
+                      borderRight: "1px solid rgba(255,255,255,0.04)",
+                    }} />
+                  );
+                }
+                const { duty, span } = cell;
+                return (
+                  <td key={i} colSpan={span} style={{
+                    padding: "3px 2px",
+                    background: "#0d0f18",
+                    borderRight: "1px solid rgba(255,255,255,0.04)",
+                  }}>
+                    {span === 1 ? (
+                      <div style={{
+                        textAlign: "center", fontSize: 8,
+                        color: duty.color, fontWeight: 700,
+                      }}>{duty.name}</div>
+                    ) : (
+                      <div style={{
+                        display: "flex", alignItems: "center",
+                        width: "100%", padding: "0 1px", boxSizing: "border-box",
+                      }}>
+                        <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>←</span>
+                        <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
+                        <span style={{
+                          fontSize: 8, color: duty.color, fontWeight: 700,
+                          flexShrink: 0, whiteSpace: "nowrap", padding: "0 2px",
+                        }}>{duty.name}</span>
+                        <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
+                        <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>→</span>
+                      </div>
+                    )}
+                  </td>
+                );
+              });
 
               return (
                 <Fragment key={mem.id}>
-                  {/* ── 教務予定行 ── */}
-                  <tr>
-                    <td rowSpan={2} style={{
-                      position: "sticky", left: 0, zIndex: 5,
-                      background: "#0d0f18",
-                      padding: "5px 10px",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
-                      borderRight: "1px solid rgba(255,255,255,0.08)",
-                      whiteSpace: "nowrap",
-                      verticalAlign: "middle",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        {t && (
-                          <span style={{
-                            width: 3, height: 14, borderRadius: 2,
-                            background: t.color, display: "inline-block", flexShrink: 0,
-                          }} />
-                        )}
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
-                          {mem.name}
-                        </span>
-                        {mem.role && (
-                          <span style={{
-                            fontSize: 8, padding: "1px 4px", borderRadius: 3,
-                            background: "rgba(139,92,246,0.2)", color: "#a78bfa",
-                          }}>{mem.role}</span>
-                        )}
-                      </div>
-                    </td>
-                    {dutyCells.map((cell, i) => {
-                      if (cell.type === "empty") {
-                        return (
-                          <td key={i} colSpan={cell.span} style={{
-                            background: "#0d0f18",
-                            height: 20,
-                            borderRight: "1px solid rgba(255,255,255,0.04)",
-                          }} />
-                        );
-                      }
-                      const { duty, span } = cell;
-                      return (
-                        <td key={i} colSpan={span} style={{
-                          padding: "3px 2px",
+                  {/* ── 教務予定行（重複時は複数行） ── */}
+                  {dutyLayers.map((layerCells, li) => (
+                    <tr key={`duty-${li}`}>
+                      {li === 0 && (
+                        <td rowSpan={dutyLayers.length + 1} style={{
+                          position: "sticky", left: 0, zIndex: 5,
                           background: "#0d0f18",
-                          borderRight: "1px solid rgba(255,255,255,0.04)",
+                          padding: "5px 10px",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          borderRight: "1px solid rgba(255,255,255,0.08)",
+                          whiteSpace: "nowrap",
+                          verticalAlign: "middle",
                         }}>
-                          {span === 1 ? (
-                            <div style={{
-                              textAlign: "center", fontSize: 8,
-                              color: duty.color, fontWeight: 700,
-                            }}>{duty.name}</div>
-                          ) : (
-                            <div style={{
-                              display: "flex", alignItems: "center",
-                              width: "100%", padding: "0 1px", boxSizing: "border-box",
-                            }}>
-                              <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>←</span>
-                              <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {t && (
                               <span style={{
-                                fontSize: 8, color: duty.color, fontWeight: 700,
-                                flexShrink: 0, whiteSpace: "nowrap", padding: "0 2px",
-                              }}>{duty.name}</span>
-                              <div style={{ flex: 1, height: 1, background: duty.color, opacity: 0.5 }} />
-                              <span style={{ fontSize: 8, color: duty.color, flexShrink: 0 }}>→</span>
-                            </div>
-                          )}
+                                width: 3, height: 14, borderRadius: 2,
+                                background: t.color, display: "inline-block", flexShrink: 0,
+                              }} />
+                            )}
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+                              {mem.name}
+                            </span>
+                            {mem.role && (
+                              <span style={{
+                                fontSize: 8, padding: "1px 4px", borderRadius: 3,
+                                background: "rgba(139,92,246,0.2)", color: "#a78bfa",
+                              }}>{mem.role}</span>
+                            )}
+                          </div>
                         </td>
-                      );
-                    })}
-                  </tr>
+                      )}
+                      {renderDutyCells(layerCells)}
+                    </tr>
+                  ))}
                   {/* ── 勤務ステータス行 ── */}
                   <tr>
                     {allDays.map(day => {
