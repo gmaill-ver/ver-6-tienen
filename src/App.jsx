@@ -235,6 +235,8 @@ function MainApp({ user }) {
           members={members}   saveMembers={saveMembers}
           getTeam={getTeam}   getSt={getSt}
           isAdmin={isAdmin}
+          selectedMember={selectedMember}
+          setSelectedMember={setAndSaveMember}
           onBack={() => setScreen("home")}
         />
       )}
@@ -352,16 +354,6 @@ function InputScreen({
   const year = viewYear; const month = viewMonth;
   const [activeStatus, setActiveStatus] = useState(null); // 選択中カテゴリ（null=消去モード以外）
   const [eraseMode, setEraseMode] = useState(false);
-  const [defaultFilter, setDefaultFilter] = useState(() =>
-    LS.get(`defaultBoardFilter_${selectedMember}`, "ALL")
-  );
-  useEffect(() => {
-    setDefaultFilter(LS.get(`defaultBoardFilter_${selectedMember}`, "ALL"));
-  }, [selectedMember]);
-  const handleDefaultFilterChange = (val) => {
-    setDefaultFilter(val);
-    LS.set(`defaultBoardFilter_${selectedMember}`, val);
-  };
   const cells  = useMemo(() => buildCalendar(year, month), [year, month]);
 
   // 教務予定ごとに固定の行番号を割り当て（開始日順でレイヤーを組む）
@@ -465,29 +457,11 @@ function InputScreen({
             borderRadius: 10, padding: "10px 14px", marginBottom: 16,
           }}>
             <div>
-              <div>
-                <span style={{ fontSize: 15, fontWeight: 800 }}>{member.name}</span>
-                <span style={{
-                  marginLeft: 8, fontSize: 10, color: team.accent,
-                  background: `${team.color}22`, padding: "2px 8px", borderRadius: 5,
-                }}>{team.name}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>ボード初期表示</span>
-                <select
-                  value={defaultFilter}
-                  onChange={e => handleDefaultFilterChange(e.target.value)}
-                  style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 6, padding: "2px 6px",
-                    color: "#e2e8f0", fontSize: 11, cursor: "pointer", outline: "none",
-                  }}
-                >
-                  <option value="ALL">全班</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
+              <span style={{ fontSize: 15, fontWeight: 800 }}>{member.name}</span>
+              <span style={{
+                marginLeft: 8, fontSize: 10, color: team.accent,
+                background: `${team.color}22`, padding: "2px 8px", borderRadius: 5,
+              }}>{team.name}</span>
             </div>
             <button onClick={() => setSelectedMember(null)} style={{
               background: "rgba(255,255,255,0.07)",
@@ -1378,7 +1352,7 @@ function TeamMemo({ teamId, year, month }) {
 }
 
 // ── Settings Screen ───────────────────────────────────────────────
-function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, getTeam, getSt, isAdmin, onBack }) {
+function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, getTeam, getSt, isAdmin, selectedMember, setSelectedMember, onBack }) {
   const [section, setSection] = useState(null);
 
   if (section === "members") {
@@ -1400,6 +1374,15 @@ function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, g
   if (section === "whitelist" && isAdmin) {
     return <WhitelistSettings onBack={() => setSection(null)} />;
   }
+  if (section === "device") {
+    return (
+      <DeviceSettings
+        teams={teams} members={members} getTeam={getTeam}
+        selectedMember={selectedMember} setSelectedMember={setSelectedMember}
+        onBack={() => setSection(null)}
+      />
+    );
+  }
 
   return (
     <div style={{ maxWidth: 500, margin: "0 auto", padding: "16px 12px" }}>
@@ -1408,11 +1391,93 @@ function SettingsScreen({ teams, statuses, saveStatuses, members, saveMembers, g
         <div style={{ fontSize: 15, fontWeight: 800 }}>設定</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <SettingRow icon="📱" title="端末設定"       sub="あなたは誰？ボードの初期表示班"   onClick={() => setSection("device")} />
         <SettingRow icon="👥" title="メンバー管理"   sub="メンバーの追加・編集・削除"       onClick={() => setSection("members")} />
         <SettingRow icon="🏷️" title="ステータス管理" sub="勤務カテゴリの追加・編集・削除"   onClick={() => setSection("statuses")} />
         {isAdmin && (
           <SettingRow icon="🔐" title="承認メール管理" sub="ログインを許可するメールアドレスの管理" onClick={() => setSection("whitelist")} />
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Device Settings ───────────────────────────────────────────────
+function DeviceSettings({ teams, members, getTeam, selectedMember, setSelectedMember, onBack }) {
+  const [defaultFilter, setDefaultFilter] = useState(() =>
+    LS.get(`defaultBoardFilter_${selectedMember}`, "ALL")
+  );
+
+  const handleMemberChange = (id) => {
+    setSelectedMember(id || null);
+    setDefaultFilter(LS.get(`defaultBoardFilter_${id}`, "ALL"));
+  };
+
+  const handleFilterChange = (val) => {
+    setDefaultFilter(val);
+    if (selectedMember) LS.set(`defaultBoardFilter_${selectedMember}`, val);
+  };
+
+  const selStyle = {
+    background: "rgba(255,255,255,0.07)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 8, padding: "9px 12px",
+    color: "#e2e8f0", fontSize: 14, cursor: "pointer", outline: "none", width: "100%",
+  };
+
+  return (
+    <div style={{ maxWidth: 500, margin: "0 auto", padding: "16px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+        <button onClick={onBack} style={backBtnStyle}>↩︎</button>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>端末設定</div>
+      </div>
+
+      {/* あなたは？ */}
+      <div style={{
+        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12, padding: 16, marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>あなたは？</div>
+        <select value={selectedMember || ""} onChange={e => handleMemberChange(e.target.value)} style={selStyle}>
+          <option value="">-- 選択してください --</option>
+          {members.map(m => {
+            const t = getTeam(m.teamId);
+            return <option key={m.id} value={m.id}>{m.name}（{t?.name}）</option>;
+          })}
+        </select>
+        {selectedMember && (() => {
+          const m = members.find(x => x.id === selectedMember);
+          const t = m ? getTeam(m.teamId) : null;
+          if (!m) return null;
+          return (
+            <div style={{
+              marginTop: 10, display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 10px",
+              background: t ? `${t.color}18` : "transparent",
+              borderLeft: t ? `3px solid ${t.color}` : "none",
+              borderRadius: 6,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>{m.name}</span>
+              {t && <span style={{ fontSize: 11, color: t.accent }}>{t.name}</span>}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ボード初期表示 */}
+      <div style={{
+        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12, padding: 16,
+        opacity: selectedMember ? 1 : 0.4, pointerEvents: selectedMember ? "auto" : "none",
+      }}>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>ボード初期表示</div>
+        <select value={defaultFilter} onChange={e => handleFilterChange(e.target.value)} style={selStyle}>
+          <option value="ALL">全班</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 8 }}>
+          全体ボードを開いたときに最初に表示される班
+        </div>
       </div>
     </div>
   );
