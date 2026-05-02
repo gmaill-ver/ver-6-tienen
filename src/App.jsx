@@ -414,7 +414,7 @@ function InputScreen({
         <MonthNav viewYear={viewYear} viewMonth={viewMonth} goPrev={goPrev} goNext={goNext} goToday={goToday} />
       </div>
 
-      {!selectedMember ? (
+      {(!selectedMember || !member || !team) ? (
         /* Member select */
         <>
           {teams.map(t => {
@@ -1408,8 +1408,9 @@ function DeviceSettings({ teams, members, getTeam, selectedMember, setSelectedMe
     LS.get(`defaultBoardFilter_${selectedMember}`, "ALL")
   );
 
-  const handleMemberChange = (id) => {
-    setSelectedMember(id || null);
+  const handleMemberChange = (rawId) => {
+    const id = rawId ? Number(rawId) : null;
+    setSelectedMember(id);
     setDefaultFilter(LS.get(`defaultBoardFilter_${id}`, "ALL"));
   };
 
