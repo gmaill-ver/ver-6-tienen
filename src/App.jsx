@@ -1087,6 +1087,10 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                       <div style={{
                         textAlign: "center", fontSize: 8,
                         color: duty.color, fontWeight: 700,
+                        overflow: "hidden",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
                       }}>{duty.name}</div>
                     ) : (
                       <div style={{
@@ -1166,7 +1170,13 @@ function BoardScreen({ viewYear, viewMonth, goPrev, goNext, goToday, attendanceD
                             : "transparent",
                         }}>
                           {st ? (
-                            <span style={{ color: st.color, fontSize: 10, fontWeight: 800 }}>{st.label}</span>
+                            <span style={{
+                              color: st.color, fontSize: 10, fontWeight: 800,
+                              overflow: "hidden",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                            }}>{st.label}</span>
                           ) : (
                             <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 10 }}>-</span>
                           )}
